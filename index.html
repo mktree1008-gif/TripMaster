@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voyage Pocket</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape--one"></div>
+    <div class="bg-shape bg-shape--two"></div>
+
+    <main class="app-shell">
+      <header class="app-header">
+        <p class="eyebrow">MY TRAVEL WEBAPP</p>
+        <h1>Voyage Pocket</h1>
+        <p class="subtitle">여행 계획 + 기록 + 다이어리를 하나로 관리해요.</p>
+      </header>
+
+      <section id="flight" class="tab-panel is-active" aria-label="Flight">
+        <div class="panel-head">
+          <h2>Flight</h2>
+          <p>Skyscanner 스타일로 항공권 비교</p>
+          <p class="note">현재는 데모 데이터 기반 비교 화면이며, API 연동 시 실시간 가격으로 확장됩니다.</p>
+        </div>
+
+        <div class="card search-card">
+          <div class="trip-type" role="tablist" aria-label="Trip type">
+            <button class="trip-type-btn is-active" data-trip-type="round">Round trip</button>
+            <button class="trip-type-btn" data-trip-type="oneway">One way</button>
+            <button class="trip-type-btn" data-trip-type="multi">Multi-city</button>
+          </div>
+
+          <div class="form-grid two-col">
+            <label>
+              출발지
+              <select id="flight-origin"></select>
+            </label>
+            <label>
+              도착지
+              <select id="flight-destination"></select>
+            </label>
+          </div>
+
+          <div id="multi-city-group" class="form-grid two-col is-hidden">
+            <label>
+              2구간 출발지
+              <select id="flight-second-origin"></select>
+            </label>
+            <label>
+              2구간 도착지
+              <select id="flight-second-destination"></select>
+            </label>
+          </div>
+
+          <div class="form-grid two-col">
+            <label>
+              출발일
+              <input type="date" id="flight-depart-date" />
+            </label>
+            <label id="return-date-wrap">
+              귀국일
+              <input type="date" id="flight-return-date" />
+            </label>
+          </div>
+
+          <div id="multi-second-date" class="form-grid one-col is-hidden">
+            <label>
+              2구간 출발일
+              <input type="date" id="flight-second-date" />
+            </label>
+          </div>
+
+          <div class="form-grid two-col">
+            <label>
+              인원
+              <input type="number" min="1" max="9" value="1" id="flight-passengers" />
+            </label>
+            <label>
+              좌석
+              <select id="flight-cabin">
+                <option value="economy">Economy</option>
+                <option value="premium">Premium Economy</option>
+                <option value="business">Business</option>
+              </select>
+            </label>
+          </div>
+
+          <button id="flight-search-btn" class="btn-primary">항공권 검색</button>
+          <p id="flight-feedback" class="feedback"></p>
+        </div>
+
+        <div class="list-head">
+          <h3>검색 결과</h3>
+          <label>
+            정렬
+            <select id="flight-sort">
+              <option value="recommended">추천순</option>
+              <option value="price">낮은 가격순</option>
+            </select>
+          </label>
+        </div>
+        <div id="flight-results" class="result-list"></div>
+      </section>
+
+      <section id="hotel" class="tab-panel" aria-label="Hotel">
+        <div class="panel-head">
+          <h2>Hotel</h2>
+          <p>Trip.com / Agoda 스타일 숙소 비교</p>
+          <p class="note">현재는 데모 데이터 기반 비교 화면이며, API 연동 시 실시간 요금으로 확장됩니다.</p>
+        </div>
+
+        <div class="card search-card">
+          <div class="form-grid two-col">
+            <label>
+              도시
+              <select id="hotel-city"></select>
+            </label>
+            <label>
+              인원
+              <input type="number" id="hotel-guests" min="1" max="10" value="2" />
+            </label>
+          </div>
+          <div class="form-grid two-col">
+            <label>
+              체크인
+              <input type="date" id="hotel-checkin" />
+            </label>
+            <label>
+              체크아웃
+              <input type="date" id="hotel-checkout" />
+            </label>
+          </div>
+
+          <button id="hotel-search-btn" class="btn-primary">숙소 검색</button>
+          <p id="hotel-feedback" class="feedback"></p>
+        </div>
+
+        <div class="list-head">
+          <h3>숙소 결과</h3>
+          <label>
+            정렬
+            <select id="hotel-sort">
+              <option value="recommended">추천순</option>
+              <option value="price">낮은 가격순</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="hotel-results" class="result-list"></div>
+      </section>
+
+      <section id="places" class="tab-panel" aria-label="Places">
+        <div class="panel-head">
+          <h2>Places</h2>
+          <p>도시별 가볼 곳 추천 + 일정 담기</p>
+        </div>
+
+        <div class="card search-card">
+          <div class="form-grid two-col">
+            <label>
+              도시
+              <select id="places-city"></select>
+            </label>
+            <label>
+              분위기
+              <select id="places-theme">
+                <option value="all">전체</option>
+                <option value="nature">자연</option>
+                <option value="culture">문화</option>
+                <option value="photo">포토스팟</option>
+              </select>
+            </label>
+          </div>
+          <button id="places-filter-btn" class="btn-primary">추천 보기</button>
+        </div>
+
+        <div id="places-results" class="result-list"></div>
+
+        <div class="card planner-card">
+          <div class="list-head compact">
+            <h3>내 장소 플래너</h3>
+          </div>
+          <div id="places-plan" class="mini-list"></div>
+        </div>
+      </section>
+
+      <section id="restaurants" class="tab-panel" aria-label="Restaurants">
+        <div class="panel-head">
+          <h2>Restaurants</h2>
+          <p>맛집 리스트 + 식사 계획</p>
+        </div>
+
+        <div class="card search-card">
+          <div class="form-grid two-col">
+            <label>
+              도시
+              <select id="restaurants-city"></select>
+            </label>
+            <label>
+              타입
+              <select id="restaurants-type">
+                <option value="all">전체</option>
+                <option value="local">로컬</option>
+                <option value="fine">파인다이닝</option>
+                <option value="cafe">카페</option>
+              </select>
+            </label>
+          </div>
+          <button id="restaurants-filter-btn" class="btn-primary">맛집 보기</button>
+        </div>
+
+        <div id="restaurants-results" class="result-list"></div>
+
+        <div class="card planner-card">
+          <div class="list-head compact">
+            <h3>내 식사 플랜</h3>
+          </div>
+          <div id="restaurants-plan" class="mini-list"></div>
+        </div>
+      </section>
+
+      <section id="record" class="tab-panel" aria-label="Record">
+        <div class="panel-head">
+          <h2>Record</h2>
+          <p>사진 + 메모로 여행 기록 남기기</p>
+        </div>
+
+        <div class="card search-card">
+          <label>
+            제목
+            <input type="text" id="record-title" placeholder="예: 첫날 야경" />
+          </label>
+          <div class="form-grid two-col">
+            <label>
+              날짜
+              <input type="date" id="record-date" />
+            </label>
+            <label>
+              사진
+              <input type="file" id="record-photo" accept="image/*" />
+            </label>
+          </div>
+          <label>
+            메모
+            <textarea id="record-note" rows="4" placeholder="기억하고 싶은 순간을 적어보세요."></textarea>
+          </label>
+          <button id="record-save-btn" class="btn-primary">기록 저장</button>
+          <p id="record-feedback" class="feedback"></p>
+        </div>
+
+        <div id="record-list" class="result-list"></div>
+      </section>
+
+      <section id="diary" class="tab-panel" aria-label="Diary">
+        <div class="panel-head">
+          <h2>Diary</h2>
+          <p>하루를 문장으로 남기는 여행 다이어리</p>
+        </div>
+
+        <div class="card search-card">
+          <div class="form-grid two-col">
+            <label>
+              날짜
+              <input type="date" id="diary-date" />
+            </label>
+            <label>
+              기분
+              <select id="diary-mood">
+                <option>설렘</option>
+                <option>행복</option>
+                <option>편안함</option>
+                <option>감동</option>
+                <option>피곤</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            오늘의 기록
+            <textarea id="diary-content" rows="6" placeholder="오늘의 여행을 자유롭게 적어보세요."></textarea>
+          </label>
+          <button id="diary-save-btn" class="btn-primary">일기 저장</button>
+          <p id="diary-feedback" class="feedback"></p>
+        </div>
+
+        <div id="diary-list" class="result-list"></div>
+      </section>
+    </main>
+
+    <nav class="bottom-tabs" aria-label="Main tabs">
+      <button class="tab-btn is-active" data-tab="flight">Flight</button>
+      <button class="tab-btn" data-tab="hotel">Hotel</button>
+      <button class="tab-btn" data-tab="places">Places</button>
+      <button class="tab-btn" data-tab="restaurants">Restaurants</button>
+      <button class="tab-btn" data-tab="record">Record</button>
+      <button class="tab-btn" data-tab="diary">Diary</button>
+    </nav>
+
+    <script src="app.js"></script>
+  </body>
+</html>
