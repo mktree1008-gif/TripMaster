@@ -109,6 +109,11 @@ async function filesToDataUrls(files: FileList | null) {
 
 export function TripMasterApp() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const backendConfigured = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+      !String(process.env.NEXT_PUBLIC_SUPABASE_URL).includes('example.supabase.co')
+  );
   const [language, setLanguage] = useState<LanguageCode>('en');
   const [autoTranslate, setAutoTranslate] = useState(true);
   const copy = t(language);
@@ -250,7 +255,12 @@ export function TripMasterApp() {
       setProfile(res.data);
       setLanguage(res.data.locale);
       setNickname(res.data.nickname);
+      return true;
     }
+    if (res.message) {
+      setStatusMessage(res.message);
+    }
+    return false;
   }
 
   async function loadTrips() {
@@ -260,7 +270,35 @@ export function TripMasterApp() {
       if (!selectedTripId && res.data.length > 0) {
         setSelectedTripId(res.data[0].id);
       }
+      return true;
     }
+    if (res.message) {
+      setStatusMessage(res.message);
+    }
+    return false;
+  }
+
+  async function ensureProfileFromSession(sessionUser: any) {
+    const fallbackNickname =
+      sessionUser?.user_metadata?.preferred_username ||
+      sessionUser?.user_metadata?.name ||
+      sessionUser?.email?.split('@')[0] ||
+      'traveler';
+
+    await apiFetch(supabase, '/api/auth/sync-profile', {
+      method: 'POST',
+      body: JSON.stringify({
+        nickname: String(fallbackNickname).replace(/\s+/g, '').toLowerCase().slice(0, 32),
+        displayName: sessionUser?.user_metadata?.name ?? fallbackNickname,
+        locale: language,
+      }),
+    });
+  }
+
+  function requireSignIn() {
+    if (nickname) return true;
+    setStatusMessage('Please sign in first.');
+    return false;
   }
 
   function applyTripUpdate(updatedTrip: TripSummary) {
@@ -273,7 +311,11 @@ export function TripMasterApp() {
         data: { session },
       } = await supabase.auth.getSession();
       if (session?.user) {
-        await loadProfile();
+        const loadedProfile = await loadProfile();
+        if (!loadedProfile) {
+          await ensureProfileFromSession(session.user);
+          await loadProfile();
+        }
         await loadTrips();
       }
     };
@@ -408,6 +450,7 @@ export function TripMasterApp() {
   }
 
   async function createTrip() {
+    if (!requireSignIn()) return;
     const res = await apiFetch<TripSummary>(supabase, '/api/trips', {
       method: 'POST',
       body: JSON.stringify({
@@ -467,6 +510,7 @@ export function TripMasterApp() {
   }
 
   async function createInvite() {
+    if (!requireSignIn()) return;
     if (!selectedTripId) return;
     const res = await apiFetch<any>(supabase, '/api/invites', {
       method: 'POST',
@@ -484,6 +528,7 @@ export function TripMasterApp() {
   }
 
   async function acceptInvite() {
+    if (!requireSignIn()) return;
     if (!inviteCode.trim()) return;
     const res = await apiFetch(supabase, '/api/invites', {
       method: 'PATCH',
@@ -508,6 +553,7 @@ export function TripMasterApp() {
   }
 
   async function savePlace(place: any) {
+    if (!requireSignIn()) return;
     if (!selectedTripId) return;
     await apiFetch(supabase, '/api/places', {
       method: 'POST',
@@ -585,6 +631,7 @@ export function TripMasterApp() {
   }
 
   async function submitTip() {
+    if (!requireSignIn()) return;
     if (!tipMessage.trim()) return;
     const res = await apiFetch(supabase, '/api/tips', {
       method: 'POST',
@@ -613,6 +660,7 @@ export function TripMasterApp() {
 
   async function saveRecord(event: FormEvent) {
     event.preventDefault();
+    if (!requireSignIn()) return;
     if (!selectedTripId || !recordTitle.trim()) return;
     const mediaUrls = await filesToDataUrls(recordFiles);
     const res = await apiFetch<RecordEntry>(supabase, '/api/records', {
@@ -655,6 +703,7 @@ export function TripMasterApp() {
 
   async function createTripstargramPost(event: FormEvent) {
     event.preventDefault();
+    if (!requireSignIn()) return;
     if (!selectedTripId) return;
     if (tripstargramMode === 'auto' && !tripstargramDiaryId) {
       setStatusMessage('Select a diary to auto-create a Tripstargram post.');
@@ -691,6 +740,7 @@ export function TripMasterApp() {
 
   async function saveDiary(event: FormEvent) {
     event.preventDefault();
+    if (!requireSignIn()) return;
     if (!selectedTripId || !diaryTitle.trim() || !diaryContent.trim()) return;
     const mediaUrls = await filesToDataUrls(diaryFiles);
     if (audioDataUrl) {
@@ -731,6 +781,7 @@ export function TripMasterApp() {
   }
 
   async function createMusicJob(diaryId: string) {
+    if (!requireSignIn()) return;
     if (!selectedTripId) return;
     const res = await apiFetch<MusicJob>(supabase, '/api/music/jobs', {
       method: 'POST',
@@ -750,6 +801,7 @@ export function TripMasterApp() {
   }
 
   async function generatePlan() {
+    if (!requireSignIn()) return;
     if (!selectedTripId) return;
     const payload = {
       tripId: selectedTripId,
@@ -831,6 +883,7 @@ export function TripMasterApp() {
 
   async function saveProfile(event: FormEvent) {
     event.preventDefault();
+    if (!requireSignIn()) return;
     if (!profile) return;
     const res = await apiFetch<UserProfile>(supabase, '/api/profile', {
       method: 'PATCH',
@@ -850,6 +903,7 @@ export function TripMasterApp() {
   }
 
   async function generateProfileImage() {
+    if (!requireSignIn()) return;
     const prompt = `${profile?.displayName || nickname || 'Traveler'} portrait for TripMaster profile`;
     const res = await apiFetch<{ generatedUrl: string }>(supabase, '/api/profile', {
       method: 'POST',
@@ -884,6 +938,7 @@ export function TripMasterApp() {
   }
 
   async function loadSupportHistory() {
+    if (!requireSignIn()) return;
     const res = await apiFetch<any[]>(supabase, '/api/support', { method: 'GET' });
     if (res.ok && res.data) {
       setSupportHistory(res.data);
@@ -892,6 +947,7 @@ export function TripMasterApp() {
 
   async function submitSupport(event: FormEvent) {
     event.preventDefault();
+    if (!requireSignIn()) return;
     const res = await apiFetch(supabase, '/api/support', {
       method: 'POST',
       body: JSON.stringify({
@@ -1060,6 +1116,9 @@ export function TripMasterApp() {
         </div>
 
         <AuthPanel supabase={supabase} language={language} currentNickname={nickname} onSignedIn={onSignedIn} onSignedOut={onSignedOut} />
+        {!backendConfigured ? (
+          <p className="error-text">Backend is not configured yet. Set real Supabase environment variables to enable save/login.</p>
+        ) : null}
       </header>
 
       <section className="card trip-card">
@@ -1080,16 +1139,16 @@ export function TripMasterApp() {
             New Trip Title
             <input value={newTripTitle} onChange={(event) => setNewTripTitle(event.target.value)} />
           </label>
-          <button type="button" className="btn-primary" onClick={createTrip}>
+          <button type="button" className="btn-primary" onClick={createTrip} disabled={!nickname}>
             Create Trip
           </button>
         </div>
         <div className="trip-row">
-          <button type="button" className="btn-secondary" onClick={createInvite} disabled={!selectedTripId}>
+          <button type="button" className="btn-secondary" onClick={createInvite} disabled={!nickname || !selectedTripId}>
             Create Invite Link
           </button>
           <input placeholder="Paste invite code" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} />
-          <button type="button" className="btn-secondary" onClick={acceptInvite}>
+          <button type="button" className="btn-secondary" onClick={acceptInvite} disabled={!nickname}>
             Accept Invite
           </button>
         </div>

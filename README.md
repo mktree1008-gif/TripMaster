@@ -11,7 +11,7 @@ TripMaster is a mobile-first travel web app that covers the full flow from plann
   - Information, Plan, Transportation, Tips, Entertainment, Event
   - Tripstargram (diary-based auto post + manual post feed)
 - Auth:
-  - Nickname + password (nickname mapped to local-style auth email)
+  - Nickname + password (Sign in + Create account UI)
   - Google / Apple OAuth entry points
 - Sharing:
   - Trip invite link/code
@@ -74,6 +74,10 @@ Open `http://localhost:3000`.
 
 ## Notes
 
+- If `NEXT_PUBLIC_SUPABASE_URL` is still `https://example.supabase.co` (or unset), create/save/auth APIs will fail.
+- For Google/Apple OAuth, add your deployed URL to Supabase Auth settings:
+  - `Site URL`: `https://tripmaster-webapp.vercel.app`
+  - `Redirect URLs`: `https://tripmaster-webapp.vercel.app`
 - Event endpoint:
   - uses Ticketmaster Discovery API when `TICKETMASTER_API_KEY` is present
   - otherwise serves curated fallback events

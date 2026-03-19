@@ -15,17 +15,23 @@ interface AuthPanelProps {
 }
 
 export function AuthPanel({ supabase, language, currentNickname, onSignedIn, onSignedOut }: AuthPanelProps) {
+  const [mode, setMode] = useState<'signin' | 'create'>('signin');
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   const labels = useMemo(() => {
     if (language === 'ko') {
       return {
         signIn: '로그인',
+        create: '계정 만들기',
+        createAccount: 'Create account',
         nickname: '닉네임',
         password: '비밀번호',
+        confirmPassword: '비밀번호 확인',
         signOut: '로그아웃',
         google: 'Google 로그인',
         apple: 'Apple 로그인',
@@ -34,8 +40,11 @@ export function AuthPanel({ supabase, language, currentNickname, onSignedIn, onS
     }
     return {
       signIn: 'Sign in',
+      create: 'Create account',
+      createAccount: 'Create account',
       nickname: 'Nickname',
       password: 'Password',
+      confirmPassword: 'Confirm password',
       signOut: 'Sign out',
       google: 'Continue with Google',
       apple: 'Continue with Apple',
@@ -57,33 +66,18 @@ export function AuthPanel({ supabase, language, currentNickname, onSignedIn, onS
   async function handleSignIn(event: FormEvent) {
     event.preventDefault();
     setError('');
+    setNotice('');
     setLoading(true);
     try {
       const email = nicknameToEmail(nickname);
 
-      let signIn = await supabase.auth.signInWithPassword({
+      const signIn = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signIn.error) {
-        const signUp = await supabase.auth.signUp({
-          email,
-          password,
-        });
-
-        if (signUp.error) {
-          throw signIn.error;
-        }
-
-        signIn = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-      }
-
-      if (signIn.error) {
-        throw signIn.error;
+        throw new Error(signIn.error.message || 'Sign in failed');
       }
 
       await syncProfile(nickname);
@@ -95,16 +89,60 @@ export function AuthPanel({ supabase, language, currentNickname, onSignedIn, onS
     }
   }
 
+  async function handleCreateAccount(event: FormEvent) {
+    event.preventDefault();
+    setError('');
+    setNotice('');
+    if (password !== confirmPassword) {
+      setError(language === 'ko' ? '비밀번호가 일치하지 않습니다.' : 'Passwords do not match.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await apiFetch<{ message?: string }>(supabase, '/api/auth/create-account', {
+        method: 'POST',
+        body: JSON.stringify({
+          nickname,
+          password,
+          displayName: nickname,
+          locale: language,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(res.message ?? 'Failed to create account');
+      }
+
+      setNotice(res.data?.message ?? (language === 'ko' ? '계정이 생성되었습니다. 로그인해 주세요.' : 'Account created. Please sign in.'));
+      setMode('signin');
+      setConfirmPassword('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create account');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleOAuth(provider: 'google' | 'apple') {
     setError('');
+    setNotice('');
     setLoading(true);
-    const redirectTo = `${window.location.origin}/auth/callback`;
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+    if (!supabaseUrl || supabaseUrl.includes('example.supabase.co')) {
+      setError('Supabase is not configured. Set real NEXT_PUBLIC_SUPABASE_URL/KEY in Vercel first.');
+      setLoading(false);
+      return;
+    }
+
+    const redirectTo = `${window.location.origin}`;
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo },
     });
     if (oauthError) {
-      setError(oauthError.message);
+      setError(`${oauthError.message} (Check Supabase OAuth provider + redirect URL settings)`);
       setLoading(false);
     }
   }
@@ -128,7 +166,15 @@ export function AuthPanel({ supabase, language, currentNickname, onSignedIn, onS
   }
 
   return (
-    <form className="auth-box" onSubmit={handleSignIn}>
+    <form className="auth-box" onSubmit={mode === 'signin' ? handleSignIn : handleCreateAccount}>
+      <div className="auth-mode-row">
+        <button type="button" className={mode === 'signin' ? 'btn-secondary active' : 'btn-secondary'} onClick={() => setMode('signin')}>
+          {labels.signIn}
+        </button>
+        <button type="button" className={mode === 'create' ? 'btn-secondary active' : 'btn-secondary'} onClick={() => setMode('create')}>
+          {labels.create}
+        </button>
+      </div>
       <label>
         {labels.nickname}
         <input value={nickname} onChange={(event) => setNickname(event.target.value)} required minLength={2} maxLength={32} />
@@ -137,9 +183,16 @@ export function AuthPanel({ supabase, language, currentNickname, onSignedIn, onS
         {labels.password}
         <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={6} />
       </label>
+      {mode === 'create' ? (
+        <label>
+          {labels.confirmPassword}
+          <input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required minLength={6} />
+        </label>
+      ) : null}
+      {notice ? <p className="status">{notice}</p> : null}
       {error ? <p className="error-text">{error}</p> : null}
       <button className="btn-primary" type="submit" disabled={loading}>
-        {labels.signIn}
+        {mode === 'signin' ? labels.signIn : labels.createAccount}
       </button>
       <div className="oauth-row">
         <button type="button" className="btn-secondary" onClick={() => handleOAuth('google')} disabled={loading}>
