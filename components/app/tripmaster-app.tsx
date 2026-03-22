@@ -96,6 +96,13 @@ function formatKRW(value: number) {
   return `₩${new Intl.NumberFormat('ko-KR').format(value)}`;
 }
 
+function formatDateChipText(value: string) {
+  if (!value) return 'TBD';
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
+}
+
 function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -291,6 +298,17 @@ export function TripMasterApp() {
   const [hotelCity, setHotelCity] = useState('Tokyo');
   const [hotelSort, setHotelSort] = useState<'recommended' | 'price'>('recommended');
   const [hotelResults, setHotelResults] = useState<HotelOption[]>([]);
+  const [flightNotes, setFlightNotes] = useState({
+    packed: false,
+    seatMemo: '',
+    terminalMemo: '',
+    reminder: '',
+  });
+  const [hotelNotes, setHotelNotes] = useState({
+    requests: '',
+    lateCheckIn: '',
+    nearbyNote: '',
+  });
 
   const [placesTheme, setPlacesTheme] = useState<'activity' | 'healing' | 'city' | 'all'>('all');
   const [placesCity, setPlacesCity] = useState('Tokyo');
@@ -334,6 +352,8 @@ export function TripMasterApp() {
   const [returnFlightTime, setReturnFlightTime] = useState('18:00');
   const [planResult, setPlanResult] = useState<any>(null);
   const [transportOptions, setTransportOptions] = useState<any[]>([]);
+  const [selectedTransportKey, setSelectedTransportKey] = useState('');
+  const [transportMemo, setTransportMemo] = useState('');
 
   const [tips, setTips] = useState<any[]>([]);
   const [tipMessage, setTipMessage] = useState('');
@@ -1510,6 +1530,14 @@ export function TripMasterApp() {
     }
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!transportOptions.length) return;
+    const exists = transportOptions.some((option) => `${option.mode}-${option.bookingUrl}` === selectedTransportKey);
+    if (!exists) {
+      setSelectedTransportKey(`${transportOptions[0].mode}-${transportOptions[0].bookingUrl}`);
+    }
+  }, [transportOptions, selectedTransportKey]);
+
   function scrollToSection(sectionId: string) {
     if (typeof window === 'undefined') return;
     const tryScroll = (attempt = 0) => {
@@ -1668,6 +1696,10 @@ export function TripMasterApp() {
   const planPrepGuide = travelPrepGuides[countryCode] ?? travelPrepGuides.DEFAULT;
   const planPrepItems = planPrepGuide[planPrepTopic];
   const packingChecklist = activePackingKey ? packingByTrip[activePackingKey] ?? [] : [];
+  const primaryFlight = flightResults[0] ?? null;
+  const primaryHotel = hotelResults[0] ?? null;
+  const selectedTransport =
+    transportOptions.find((option) => `${option.mode}-${option.bookingUrl}` === selectedTransportKey) ?? transportOptions[0] ?? null;
   const placesForDisplay =
     planHelperSubTab === 'activities'
       ? placesResponse.places.filter((place) => place.theme === 'activity')
@@ -1690,9 +1722,12 @@ export function TripMasterApp() {
       ) : null}
       <header className="top-nav-shell">
         <div className="top-nav-row">
-          <button type="button" className="brand-mark" onClick={() => scrollToSection('main-tabs-anchor')}>
-            ✈️ TripMaster
-          </button>
+          <div className="brand-stack">
+            <button type="button" className="brand-mark" onClick={() => scrollToSection('main-tabs-anchor')}>
+              ✈️ TripMaster
+            </button>
+            <p className="brand-tagline">Plan with confidence, travel with excitement.</p>
+          </div>
           <div className="top-nav-actions">
             <label className="utility-language">
               <span aria-hidden>🌐</span>
@@ -1792,13 +1827,13 @@ export function TripMasterApp() {
         ) : null}
       </header>
 
-      <section className="card trip-card">
+      <section className="card section-card glass-card trip-card">
         <div className="workspace-header">
           <h2>🧾 Trip Workspace</h2>
           <p>Manage your current trip, create or join trips, and collaboration permissions in one premium workspace.</p>
         </div>
         <div className="workspace-grid">
-          <article className="workspace-panel">
+          <article className="workspace-panel summary-card glass-card">
             <h3>Current Trip</h3>
             <label>
               Select trip
@@ -1812,10 +1847,15 @@ export function TripMasterApp() {
               </select>
             </label>
             <p className="workspace-meta">
-              {selectedTrip
-                ? `Role: ${selectedTrip.role.toUpperCase()} · Destination: ${selectedTrip.destinationCountry ?? 'Not synced yet'}`
-                : 'Choose a trip to manage invites, packing permissions, and shared history.'}
+              {selectedTrip ? 'Trip context loaded. You can now manage invites and planning cards.' : 'Choose a trip to manage invites, packing permissions, and shared history.'}
             </p>
+            {selectedTrip ? (
+              <div className="chip-row">
+                <span className="role-badge">Role: {selectedTrip.role.toUpperCase()}</span>
+                <span className="status-chip">Country: {selectedTrip.destinationCountry ?? 'Not synced yet'}</span>
+                <span className="travel-mode-chip">Mode: {flightTripType}</span>
+              </div>
+            ) : null}
             <button
               type="button"
               className="btn-secondary danger"
@@ -1826,7 +1866,7 @@ export function TripMasterApp() {
             </button>
           </article>
 
-          <article className="workspace-panel">
+          <article className="workspace-panel action-card glass-card">
             <h3>Create / Join</h3>
             <label>
               New trip title
@@ -1844,7 +1884,7 @@ export function TripMasterApp() {
             </button>
           </article>
 
-          <article className="workspace-panel">
+          <article className="workspace-panel detail-card glass-card">
             <h3>Collaboration</h3>
             <button type="button" className="btn-secondary" onClick={createInvite} disabled={!nickname || !selectedTripId}>
               Create Invite Link
@@ -1878,7 +1918,7 @@ export function TripMasterApp() {
       </section>
 
       {activeTab === 'flight' || activeTab === 'hotel' || activeTab === 'places' || activeTab === 'restaurants' ? (
-        <section className="card journey-tools-card">
+        <section className="card section-card glass-card journey-tools-card">
           <p className="hub-subtab-title">Journey Studio</p>
           <div className="journey-tools-row">
             <button type="button" className="journey-tool-btn" onClick={() => openMainTab('record', 'tab-record-section')}>
@@ -1898,7 +1938,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'places' ? (
-        <section className="card hub-subtab-card">
+        <section className="card section-card glass-card hub-subtab-card">
           <p className="hub-subtab-title">PlanHelper</p>
           <div className="hub-subtab-list">
             <button
@@ -1937,7 +1977,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'restaurants' ? (
-        <section className="card hub-subtab-card">
+        <section className="card section-card glass-card hub-subtab-card">
           <p className="hub-subtab-title">Information</p>
           <div className="hub-subtab-list">
             <button
@@ -1966,147 +2006,316 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'flight' ? (
-        <section className="card">
+        <section className="card section-card glass-card">
           <div className="section-heading">
             <p className="section-kicker">✈️ Flight Center</p>
             <h2>Find the best fare and fly with confidence</h2>
           </div>
-          <div className="grid two">
-            <label>
-              Origin
-              <select value={flightOrigin} onChange={(event) => setFlightOrigin(event.target.value)}>
-                {airports.map((a) => (
-                  <option key={a.code} value={a.code}>
-                    {a.city} ({a.code})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Destination
-              <select value={flightDestination} onChange={(event) => setFlightDestination(event.target.value)}>
-                {airports.map((a) => (
-                  <option key={a.code} value={a.code}>
-                    {a.city} ({a.code})
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <div className="grid three">
-            <label>
-              Trip Type
-              <select value={flightTripType} onChange={(event) => setFlightTripType(event.target.value as any)}>
-                <option value="round">Round trip</option>
-                <option value="oneway">One way</option>
-                <option value="multi">Multi-city</option>
-              </select>
-            </label>
-            <label>
-              Sort
-              <select value={flightSort} onChange={(event) => setFlightSort(event.target.value as any)}>
-                <option value="recommended">{copy.recommended}</option>
-                <option value="price">{copy.lowPrice}</option>
-              </select>
-            </label>
-            <button type="button" className="btn-secondary" onClick={updateTripDestination}>
-              Sync Destination to Trip
-            </button>
-          </div>
-
-          <div className="result-list">
-            {flightResults.map((flight) => (
-              <article key={flight.id} className="result-card">
-                <div className="result-head">
-                  <div>
-                    <strong>{flight.airline}</strong>
-                    <p>{flight.route}</p>
+          <div className="flight-dashboard-grid">
+            <article className="summary-card glass-card boarding-pass-card">
+              <h3>Upcoming Flight</h3>
+              {primaryFlight ? (
+                <>
+                  <p className="route-emphasis">
+                    {flightOrigin} ➜ {flightDestination}
+                  </p>
+                  <div className="chip-row">
+                    <span className="travel-mode-chip">✈️ {flightTripType}</span>
+                    <span className="status-chip">{primaryFlight.airline}</span>
+                    <span className="date-chip">📅 {formatDateChipText(departureDate)}</span>
+                    <span className="date-chip">🏁 {formatDateChipText(returnDate)}</span>
                   </div>
-                  <p className="price">{formatKRW(flight.price)}</p>
-                </div>
+                  <p className="workspace-meta">Booking Ref: {primaryFlight.id.toUpperCase().slice(0, 8)}</p>
+                  <p className="workspace-meta">
+                    {primaryFlight.durationHours}h • Stops {primaryFlight.stopCount} • {formatKRW(primaryFlight.price)}
+                  </p>
+                </>
+              ) : (
+                <p className="empty-state-text">Add your first flight to organize your trip.</p>
+              )}
+            </article>
+
+            <article className="detail-card glass-card">
+              <h3>Flight Timeline</h3>
+              <div className="timeline-list">
                 <p>
-                  {flight.durationHours}h · Stops {flight.stopCount}
+                  <span>Check-in</span>
+                  <strong>T-180m</strong>
                 </p>
-                <a href={flight.officialUrl} target="_blank" rel="noreferrer">
-                  Book via official airline
-                </a>
-              </article>
-            ))}
+                <p>
+                  <span>Boarding</span>
+                  <strong>T-45m</strong>
+                </p>
+                <p>
+                  <span>Gate</span>
+                  <strong>Auto-update</strong>
+                </p>
+                <p>
+                  <span>Baggage</span>
+                  <strong>{flightTripType === 'oneway' ? '1 carry-on' : '1 checked + 1 carry-on'}</strong>
+                </p>
+                <p>
+                  <span>Duration</span>
+                  <strong>{primaryFlight ? `${primaryFlight.durationHours}h` : 'TBD'}</strong>
+                </p>
+              </div>
+            </article>
+
+            <article className="action-card glass-card">
+              <h3>Flight Notes</h3>
+              <label className="inline-check">
+                <input
+                  type="checkbox"
+                  checked={flightNotes.packed}
+                  onChange={(event) => setFlightNotes((prev) => ({ ...prev, packed: event.target.checked }))}
+                />
+                <span>Packing ready for this flight</span>
+              </label>
+              <label>
+                Seat / terminal memo
+                <input
+                  value={flightNotes.seatMemo}
+                  placeholder="Ex. Seat near wing, Terminal 2"
+                  onChange={(event) => setFlightNotes((prev) => ({ ...prev, seatMemo: event.target.value }))}
+                />
+              </label>
+              <label>
+                Reminder
+                <input
+                  value={flightNotes.reminder}
+                  placeholder="Ex. Check-in opens 24h before departure"
+                  onChange={(event) => setFlightNotes((prev) => ({ ...prev, reminder: event.target.value }))}
+                />
+              </label>
+            </article>
           </div>
 
-          <h3>Recommended Destinations</h3>
-          <div className="image-grid">
-            {cityImages.slice(0, 8).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="destination-card"
-                onClick={() => {
-                  const airport = cityToAirportMap[item.city];
-                  if (airport) {
-                    setFlightDestination(airport);
-                  }
-                  setCountryCode(item.countryCode);
-                  setPlacesCity(item.city);
-                  setRestaurantsCity(item.city);
-                }}
-              >
-                <img src={item.imageUrl} alt={item.caption} />
-                <span>
-                  {item.city} ({item.countryCode})
-                </span>
+          <article className="detail-card glass-card">
+            <h3>Search Flights</h3>
+            <div className="grid two">
+              <label>
+                Origin
+                <select value={flightOrigin} onChange={(event) => setFlightOrigin(event.target.value)}>
+                  {airports.map((a) => (
+                    <option key={a.code} value={a.code}>
+                      {a.city} ({a.code})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Destination
+                <select value={flightDestination} onChange={(event) => setFlightDestination(event.target.value)}>
+                  {airports.map((a) => (
+                    <option key={a.code} value={a.code}>
+                      {a.city} ({a.code})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="grid three">
+              <label>
+                Trip Type
+                <select value={flightTripType} onChange={(event) => setFlightTripType(event.target.value as any)}>
+                  <option value="round">Round trip</option>
+                  <option value="oneway">One way</option>
+                  <option value="multi">Multi-city</option>
+                </select>
+              </label>
+              <label>
+                Sort
+                <select value={flightSort} onChange={(event) => setFlightSort(event.target.value as any)}>
+                  <option value="recommended">{copy.recommended}</option>
+                  <option value="price">{copy.lowPrice}</option>
+                </select>
+              </label>
+              <button type="button" className="btn-secondary" onClick={updateTripDestination}>
+                Sync Destination to Trip
               </button>
-            ))}
-          </div>
+            </div>
+          </article>
+
+          <article className="detail-card glass-card">
+            <h3>Available Flights</h3>
+            <div className="result-list">
+              {flightResults.length === 0 ? <p className="empty-state-text">Add your first flight to organize your trip.</p> : null}
+              {flightResults.map((flight) => (
+                <article key={flight.id} className="result-card">
+                  <div className="result-head">
+                    <div>
+                      <strong>{flight.airline}</strong>
+                      <p>{flight.route}</p>
+                    </div>
+                    <p className="price">{formatKRW(flight.price)}</p>
+                  </div>
+                  <p>
+                    {flight.durationHours}h · Stops {flight.stopCount}
+                  </p>
+                  <a href={flight.officialUrl} target="_blank" rel="noreferrer">
+                    Book via official airline
+                  </a>
+                </article>
+              ))}
+            </div>
+          </article>
+
+          <article className="detail-card glass-card">
+            <h3>Recommended Destinations</h3>
+            <div className="image-grid">
+              {cityImages.slice(0, 8).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="destination-card"
+                  onClick={() => {
+                    const airport = cityToAirportMap[item.city];
+                    if (airport) {
+                      setFlightDestination(airport);
+                    }
+                    setCountryCode(item.countryCode);
+                    setPlacesCity(item.city);
+                    setRestaurantsCity(item.city);
+                  }}
+                >
+                  <img src={item.imageUrl} alt={item.caption} />
+                  <span>
+                    {item.city} ({item.countryCode})
+                  </span>
+                </button>
+              ))}
+            </div>
+          </article>
         </section>
       ) : null}
 
       {activeTab === 'hotel' ? (
-        <section className="card">
+        <section className="card section-card glass-card">
           <div className="section-heading">
             <p className="section-kicker">🏨 Hotel Desk</p>
             <h2>Compare trusted stays in one clean view</h2>
           </div>
-          <div className="grid two">
-            <label>
-              City
-              <select value={hotelCity} onChange={(event) => setHotelCity(event.target.value)}>
-                {Array.from(new Set(airports.map((airport) => airport.city))).map((city) => (
-                  <option key={city}>{city}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Sort
-              <select value={hotelSort} onChange={(event) => setHotelSort(event.target.value as any)}>
-                <option value="recommended">{copy.recommended}</option>
-                <option value="price">{copy.lowPrice}</option>
-              </select>
-            </label>
-          </div>
-          <div className="result-list">
-            {hotelResults.map((hotel) => (
-              <article key={hotel.id} className="result-card">
-                <div className="result-head">
-                  <div>
-                    <strong>{hotel.name}</strong>
-                    <p>
-                      {hotel.city} · ⭐ {hotel.rating} ({hotel.reviewCount} reviews)
-                    </p>
+
+          <div className="hotel-dashboard-grid">
+            <article className="summary-card glass-card">
+              <h3>Reservation Summary</h3>
+              {primaryHotel ? (
+                <>
+                  <p className="route-emphasis">{primaryHotel.name}</p>
+                  <div className="chip-row">
+                    <span className="date-chip">🗓️ {formatDateChipText(departureDate)}</span>
+                    <span className="date-chip">🛏️ {formatDateChipText(returnDate)}</span>
+                    <span className="status-chip">👥 {peopleCount} guest(s)</span>
+                    <span className="status-chip">🔐 {primaryHotel.id.toUpperCase().slice(0, 8)}</span>
                   </div>
-                  <p className="price">{formatKRW(hotel.nightlyPrice)}</p>
-                </div>
-                <a href={hotel.officialUrl} target="_blank" rel="noreferrer">
-                  Book on official site
-                </a>
-              </article>
-            ))}
+                  <p className="workspace-meta">
+                    {primaryHotel.city} • ⭐ {primaryHotel.rating} ({primaryHotel.reviewCount}) • {formatKRW(primaryHotel.nightlyPrice)}/night
+                  </p>
+                </>
+              ) : (
+                <p className="empty-state-text">No hotel reservation yet. Start with a city and find trusted stays.</p>
+              )}
+            </article>
+
+            <article className="detail-card glass-card">
+              <h3>Stay Details</h3>
+              <p className="workspace-meta">
+                Address: {hotelCity} central district, traveler-friendly zone
+              </p>
+              <div className="chip-row">
+                <span className="status-chip">Wi-Fi</span>
+                <span className="status-chip">Breakfast</span>
+                <span className="status-chip">24h desk</span>
+                <span className="status-chip">No smoking</span>
+              </div>
+              <p className="workspace-meta">Policy summary: Flexible cancellation window depends on room plan.</p>
+              <a
+                className="btn-secondary inline-link-btn"
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${hotelCity} hotel`)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open directions
+              </a>
+            </article>
+
+            <article className="action-card glass-card">
+              <h3>Hotel Notes</h3>
+              <label>
+                Special request
+                <input
+                  placeholder="Ex. Quiet room, high floor"
+                  value={hotelNotes.requests}
+                  onChange={(event) => setHotelNotes((prev) => ({ ...prev, requests: event.target.value }))}
+                />
+              </label>
+              <label>
+                Late check-in memo
+                <input
+                  placeholder="Ex. Arrive around 22:30"
+                  value={hotelNotes.lateCheckIn}
+                  onChange={(event) => setHotelNotes((prev) => ({ ...prev, lateCheckIn: event.target.value }))}
+                />
+              </label>
+              <label>
+                Nearby reference
+                <input
+                  placeholder="Ex. Convenience store behind hotel"
+                  value={hotelNotes.nearbyNote}
+                  onChange={(event) => setHotelNotes((prev) => ({ ...prev, nearbyNote: event.target.value }))}
+                />
+              </label>
+            </article>
           </div>
+
+          <article className="detail-card glass-card">
+            <h3>Search Hotels</h3>
+            <div className="grid two">
+              <label>
+                City
+                <select value={hotelCity} onChange={(event) => setHotelCity(event.target.value)}>
+                  {Array.from(new Set(airports.map((airport) => airport.city))).map((city) => (
+                    <option key={city}>{city}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Sort
+                <select value={hotelSort} onChange={(event) => setHotelSort(event.target.value as any)}>
+                  <option value="recommended">{copy.recommended}</option>
+                  <option value="price">{copy.lowPrice}</option>
+                </select>
+              </label>
+            </div>
+          </article>
+
+          <article className="detail-card glass-card">
+            <h3>Trusted Reservations</h3>
+            <div className="result-list">
+              {hotelResults.length === 0 ? <p className="empty-state-text">No hotel reservation yet. Start with a city and find trusted stays.</p> : null}
+              {hotelResults.map((hotel) => (
+                <article key={hotel.id} className="result-card">
+                  <div className="result-head">
+                    <div>
+                      <strong>{hotel.name}</strong>
+                      <p>
+                        {hotel.city} · ⭐ {hotel.rating} ({hotel.reviewCount} reviews)
+                      </p>
+                    </div>
+                    <p className="price">{formatKRW(hotel.nightlyPrice)}</p>
+                  </div>
+                  <a href={hotel.officialUrl} target="_blank" rel="noreferrer">
+                    Book on official site
+                  </a>
+                </article>
+              ))}
+            </div>
+          </article>
         </section>
       ) : null}
 
       {activeTab === 'places' && (planHelperSubTab === 'places' || planHelperSubTab === 'activities') ? (
-        <section className="card">
+        <section className="card section-card glass-card">
           <div className="section-heading">
             <p className="section-kicker">📍 Discovery Board</p>
             <h2>{planHelperSubTab === 'activities' ? 'Pick active adventures for your style' : 'Choose places that match your trip mood'}</h2>
@@ -2156,7 +2365,10 @@ export function TripMasterApp() {
           ) : (
             <div className="result-list">
               {placesForDisplay.map((place) => (
-                <article key={place.id} className="result-card place-card">
+                <article
+                  key={place.id}
+                  className={planHelperSubTab === 'activities' ? 'result-card place-card activity-card' : 'result-card place-card'}
+                >
                   <img src={place.imageUrl} alt={place.name} className="thumb" />
                   <div>
                     <strong>{place.name}</strong>
@@ -2164,6 +2376,7 @@ export function TripMasterApp() {
                       <span className="data-tag">📍 {place.city}</span>
                       <span className="data-tag">🧭 {place.theme}</span>
                       <span className="data-tag">⭐ {place.rating}</span>
+                      {planHelperSubTab === 'activities' ? <span className="travel-mode-chip">⏱️ 2-4h</span> : null}
                     </p>
                     <p>{place.summary}</p>
                     <button type="button" className="btn-secondary" onClick={() => savePlace(place)}>
@@ -2172,14 +2385,14 @@ export function TripMasterApp() {
                   </div>
                 </article>
               ))}
-              {placesForDisplay.length === 0 ? <p>No places found for this subtab yet.</p> : null}
+              {placesForDisplay.length === 0 ? <p className="empty-state-text">No saved places yet. Start building your journey.</p> : null}
             </div>
           )}
         </section>
       ) : null}
 
       {activeTab === 'places' && planHelperSubTab === 'restaurants' ? (
-        <section className="card">
+        <section className="card section-card glass-card">
           <div className="section-heading">
             <p className="section-kicker">🍽️ Restaurant Picks</p>
             <h2>Curated city-by-city dining recommendations</h2>
@@ -2214,6 +2427,7 @@ export function TripMasterApp() {
                     <span className="data-tag">
                       ⭐ {restaurant.rating} ({restaurant.reviewCount})
                     </span>
+                    <span className="status-chip">Recommended</span>
                   </p>
                   <p>{restaurant.summary}</p>
                 </div>
@@ -2224,7 +2438,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'record' ? (
-        <section id="tab-record-section" className="card">
+        <section id="tab-record-section" className="card section-card glass-card">
           <div className="section-heading">
             <p className="section-kicker">🧳 Travel Record</p>
             <h2>Save your media memories in shareable cards</h2>
@@ -2253,6 +2467,7 @@ export function TripMasterApp() {
           </form>
 
           <div className="result-list">
+            {records.length === 0 ? <p className="empty-state-text">No records yet. Save your first travel memory card.</p> : null}
             {records.map((record) => (
               <article key={record.id} className="result-card">
                 <strong>{record.title}</strong>
@@ -2285,7 +2500,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'diary' ? (
-        <section id="tab-diary-section" className="card diary-section">
+        <section id="tab-diary-section" className="card section-card glass-card diary-section">
           <div className="diary-intro">
             <h2>📔 Travel Journal</h2>
             <p>Capture today with a cozy memory card, not a boring form.</p>
@@ -2328,7 +2543,7 @@ export function TripMasterApp() {
                 Auto weather (Open-Meteo)
               </button>
               <div className="diary-weather-display">
-                <strong>
+                <strong className="weather-badge">
                   {diaryWeatherEmoji} {weatherEmojiLabels[diaryWeatherEmoji] ?? 'Weather'}
                 </strong>
                 <p>{diaryWeatherLabel ?? 'Pick weather manually or auto-fill from Open-Meteo.'}</p>
@@ -2380,6 +2595,7 @@ export function TripMasterApp() {
 
           <h3 className="diary-list-title">Saved Diary Cards</h3>
           <div className="result-list">
+            {diaries.length === 0 ? <p className="empty-state-text">No diary entries yet. Start with today's first story.</p> : null}
             {diaries.map((diary) => {
               const diaryJobs = musicJobs.filter((job) => job.diaryId === diary.id);
               return (
@@ -2387,8 +2603,10 @@ export function TripMasterApp() {
                   <div className="result-head">
                     <div>
                       <strong>{diary.title}</strong>
-                      <p>
-                        {diary.date} · {diary.place} · {diary.weatherEmoji}
+                      <p className="tag-row">
+                        <span className="date-chip">📅 {formatDateChipText(diary.date)}</span>
+                        <span className="status-chip">📍 {diary.place}</span>
+                        <span className="weather-badge">{diary.weatherEmoji}</span>
                       </p>
                     </div>
                     <p>{diary.weatherLabel ?? ''}</p>
@@ -2478,7 +2696,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'tripstargram' ? (
-        <section id="tab-tripstargram-section" className="card">
+        <section id="tab-tripstargram-section" className="card section-card glass-card">
           <h2>📸 Tripstargram</h2>
           <p>Build your own Instagram-style travel feed. Auto-create from diary or post manually.</p>
           <form className="tripstargram-form" onSubmit={createTripstargramPost}>
@@ -2557,7 +2775,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'profile' ? (
-        <section id="tab-profile-section" className="card">
+        <section id="tab-profile-section" className="card section-card glass-card">
           {profile ? (
             <form onSubmit={saveProfile}>
               <div className="profile-grid">
@@ -2607,7 +2825,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'settings' ? (
-        <section id="tab-settings-section" className="card">
+        <section id="tab-settings-section" className="card section-card glass-card">
           <h2>⚙️ Settings</h2>
           <form onSubmit={submitSupport}>
             <div className="grid two">
@@ -2644,7 +2862,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'restaurants' && informationSubTab === 'information' ? (
-        <section className="card">
+        <section className="card section-card glass-card">
           <h2>🌍 Information</h2>
           <div className="grid three">
             <label>
@@ -2673,34 +2891,83 @@ export function TripMasterApp() {
               </select>
             </label>
           </div>
-          {informationData ? (
-            <article className="result-card">
-              <strong>
-                {informationData.country} · {informationData.city}
-              </strong>
-              <p>{informationData.text}</p>
+          <div className="information-grid">
+            <article className="summary-card glass-card">
+              <h3>Destination Overview</h3>
+              <p className="route-emphasis">
+                {countryCode} · {placesCity}
+              </p>
+              <div className="chip-row">
+                <span className="status-chip">Best for: {travelPurpose}</span>
+                <span className="travel-mode-chip">Vibe: {travelMood}</span>
+                <span className="status-chip">Style: {stylePreference}</span>
+              </div>
+              <p className="workspace-meta">
+                Premium curated overview designed to keep planning reliable while preserving travel excitement.
+              </p>
             </article>
-          ) : (
-            <p>No information yet.</p>
-          )}
+
+            <article className="detail-card glass-card">
+              <h3>Curated Guide Content</h3>
+              {informationData ? (
+                <>
+                  <strong>
+                    {informationData.country} · {informationData.city}
+                  </strong>
+                  <p>{informationData.text}</p>
+                </>
+              ) : (
+                <p className="empty-state-text">No information yet. Select a destination and topic to load the guide.</p>
+              )}
+            </article>
+          </div>
         </section>
       ) : null}
 
       {activeTab === 'places' && planHelperSubTab === 'transportation' ? (
-        <section id="extra-plan-section" className="card">
+        <section id="extra-plan-section" className="card section-card glass-card">
           <h2>🚄 Transportation & Smart Plan</h2>
           <div className="result-list transport-route-list">
-            {transportOptions.map((option) => (
-              <article key={`${option.mode}-${option.bookingUrl}`} className="result-card transport-card">
-                <strong>{option.mode}</strong>
-                <p>{option.reason}</p>
-                <p>{option.estimatedCost}</p>
-                <a href={option.bookingUrl} target="_blank" rel="noreferrer">
-                  Open booking
-                </a>
-              </article>
-            ))}
+            {transportOptions.length === 0 ? <p className="empty-state-text">No transportation route yet. Generate an itinerary first.</p> : null}
+            {transportOptions.map((option) => {
+              const optionKey = `${option.mode}-${option.bookingUrl}`;
+              const isActive = optionKey === (selectedTransport ? `${selectedTransport.mode}-${selectedTransport.bookingUrl}` : '');
+              return (
+                <article
+                  key={optionKey}
+                  className={isActive ? 'result-card transport-card active' : 'result-card transport-card'}
+                  onClick={() => setSelectedTransportKey(optionKey)}
+                >
+                  <strong>{option.mode}</strong>
+                  <p>{option.reason}</p>
+                  <p>{option.estimatedCost}</p>
+                  <div className="chip-row">
+                    <span className="travel-mode-chip">🚏 Route</span>
+                    <span className="status-chip">Tap for detail</span>
+                  </div>
+                </article>
+              );
+            })}
           </div>
+          {selectedTransport ? (
+            <article className="detail-card glass-card transport-detail-panel">
+              <h3>Route Detail Panel</h3>
+              <p className="route-emphasis">{selectedTransport.mode}</p>
+              <p>{selectedTransport.reason}</p>
+              <p>{selectedTransport.estimatedCost}</p>
+              <label>
+                Route memo
+                <input
+                  value={transportMemo}
+                  placeholder="Ex. Buy pass at airport station"
+                  onChange={(event) => setTransportMemo(event.target.value)}
+                />
+              </label>
+              <a href={selectedTransport.bookingUrl} target="_blank" rel="noreferrer">
+                Open booking
+              </a>
+            </article>
+          ) : null}
           <article className="plan-prep-card">
             <div className="plan-prep-header">
               <strong>
@@ -3002,10 +3269,11 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'restaurants' && informationSubTab === 'tips' ? (
-        <section className="card">
+        <section className="card section-card glass-card">
           <h2>💬 Tips</h2>
           <p>Community + global travel tips in friendly iMessage-like bubbles.</p>
           <div className="tips-bubbles">
+            {tips.length === 0 ? <p className="empty-state-text">No tips yet. Share your first practical local advice.</p> : null}
             {tips.map((tip) => (
               <div key={tip.id} className="tip-bubble">
                 <p className="tip-meta">
@@ -3025,7 +3293,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeExtraTab === 'entertainment' ? (
-        <section className="card">
+        <section className="card section-card glass-card">
           <h2>🎬 Entertainment</h2>
           <div className="grid two">
             <label>
@@ -3047,6 +3315,7 @@ export function TripMasterApp() {
             </label>
           </div>
           <div className="result-list">
+            {entertainmentItems.length === 0 ? <p className="empty-state-text">No recommendations yet. Try another mood or destination.</p> : null}
             {entertainmentItems.map((item) => (
               <article key={item.id} className="result-card">
                 <strong>{item.title}</strong>
@@ -3061,17 +3330,19 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'restaurants' && informationSubTab === 'event' ? (
-        <section id="extra-event-section" className="card">
+        <section id="extra-event-section" className="card section-card glass-card">
           <h2>🎫 Event</h2>
           <p>
             Latest planned exhibitions/performances for {placesCity} ({countryCode}) · source: {eventsSource}
           </p>
           <div className="result-list">
+            {events.length === 0 ? <p className="empty-state-text">No current events found. Try another city.</p> : null}
             {events.map((event) => (
               <article key={event.id} className="result-card">
                 <strong>{event.title}</strong>
-                <p>
-                  {event.category} · {event.date}
+                <p className="tag-row">
+                  <span className="date-chip">📅 {event.date}</span>
+                  <span className="status-chip">{event.category}</span>
                 </p>
                 <p>
                   {event.venue} · {event.priceText}

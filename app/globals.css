@@ -36,9 +36,9 @@ body {
   font-family: 'Pretendard', 'Noto Sans KR', Arial, sans-serif;
   color: var(--ink);
   background:
-    radial-gradient(circle at 10% 12%, rgba(106, 198, 255, 0.32), transparent 34%),
-    radial-gradient(circle at 86% 92%, rgba(95, 224, 213, 0.24), transparent 38%),
-    linear-gradient(155deg, #edf5ff 0%, #e0f0ff 52%, #d8f4f0 100%);
+    radial-gradient(circle at 12% 15%, rgba(162, 223, 255, 0.26), transparent 38%),
+    radial-gradient(circle at 82% 85%, rgba(174, 241, 233, 0.22), transparent 42%),
+    linear-gradient(180deg, #f1f8ff 0%, #e8f4ff 58%, #fbfeff 100%);
 }
 
 body::before {
@@ -48,9 +48,10 @@ body::before {
   z-index: -2;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.14)),
-    url('https://images.unsplash.com/photo-1517479149777-5f3b1511d5ad?auto=format&fit=crop&w=2000&q=80') center/cover no-repeat;
-  opacity: 0.2;
+    radial-gradient(ellipse at 22% 18%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.04) 54%),
+    radial-gradient(ellipse at 72% 12%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.05) 48%),
+    radial-gradient(ellipse at 80% 32%, rgba(255, 255, 255, 0.5), transparent 58%);
+  opacity: 0.72;
 }
 
 body::after {
@@ -59,12 +60,13 @@ body::after {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image:
-    radial-gradient(rgba(30, 78, 128, 0.09) 0.7px, transparent 0.7px),
-    radial-gradient(rgba(30, 78, 128, 0.06) 0.6px, transparent 0.6px);
-  background-size: 20px 20px, 28px 28px;
-  background-position: 0 0, 11px 9px;
-  opacity: 0.3;
+  background:
+    linear-gradient(120deg, transparent 0%, transparent 36%, rgba(57, 111, 165, 0.06) 36%, rgba(57, 111, 165, 0.06) 37%, transparent 37%, transparent 100%),
+    linear-gradient(310deg, transparent 0%, transparent 61%, rgba(57, 111, 165, 0.05) 61%, rgba(57, 111, 165, 0.05) 62%, transparent 62%, transparent 100%),
+    radial-gradient(circle at 30% 72%, rgba(52, 117, 180, 0.08) 0.7px, transparent 0.8px),
+    radial-gradient(circle at 66% 28%, rgba(52, 117, 180, 0.06) 0.6px, transparent 0.7px);
+  background-size: auto, auto, 18px 18px, 24px 24px;
+  opacity: 0.34;
 }
 
 a {
@@ -90,8 +92,10 @@ a:hover {
   border-radius: 18px;
   padding: 10px;
   margin-bottom: 12px;
-  border: 1px solid rgba(148, 192, 233, 0.6);
-  background: linear-gradient(130deg, rgba(235, 247, 255, 0.86), rgba(216, 242, 247, 0.82));
+  border: 1px solid rgba(176, 214, 238, 0.58);
+  background:
+    linear-gradient(130deg, rgba(14, 54, 112, 0.42), rgba(23, 140, 160, 0.35)),
+    url('https://images.unsplash.com/photo-1527631746610-bca00a040d60?auto=format&fit=crop&w=1800&q=80') center/cover no-repeat;
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(16px);
 }
@@ -102,8 +106,10 @@ a:hover {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.16));
-  opacity: 0.45;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.08)),
+    radial-gradient(circle at 14% 24%, rgba(255, 255, 255, 0.32), transparent 38%);
+  opacity: 0.52;
 }
 
 .top-nav-shell > * {
@@ -127,6 +133,18 @@ a:hover {
   gap: 8px;
 }
 
+.brand-stack {
+  display: grid;
+  gap: 4px;
+}
+
+.brand-tagline {
+  margin: 0;
+  color: rgba(236, 248, 255, 0.92);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .utility-language {
   display: inline-flex;
   align-items: center;
@@ -134,16 +152,16 @@ a:hover {
   min-height: 36px;
   padding: 4px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(126, 170, 210, 0.48);
-  background: rgba(255, 255, 255, 0.86);
-  color: #194065;
+  border: 1px solid rgba(194, 226, 247, 0.58);
+  background: rgba(244, 252, 255, 0.86);
+  color: #143a60;
   font-weight: 700;
 }
 
 .utility-language select {
   border: 0;
   background: transparent;
-  color: #194065;
+  color: #143a60;
   padding: 0 2px;
   font-size: 0.84rem;
   font-weight: 700;
@@ -154,12 +172,12 @@ a:hover {
 }
 
 .utility-icon-btn {
-  border: 1px solid rgba(126, 170, 210, 0.48);
+  border: 1px solid rgba(194, 226, 247, 0.58);
   border-radius: 999px;
   min-height: 36px;
   padding: 7px 11px;
-  background: rgba(255, 255, 255, 0.86);
-  color: #194065;
+  background: rgba(244, 252, 255, 0.86);
+  color: #143a60;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -185,10 +203,10 @@ a:hover {
 }
 
 .brand-mark {
-  border: 1px solid rgba(92, 138, 184, 0.45);
+  border: 1px solid rgba(196, 226, 247, 0.54);
   border-radius: 999px;
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.88), rgba(230, 245, 255, 0.92));
-  color: #113256;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.9), rgba(240, 250, 255, 0.94));
+  color: #0f3155;
   font-weight: 800;
   padding: 8px 13px;
   cursor: pointer;
@@ -273,8 +291,8 @@ a:hover {
   margin-bottom: 0;
   padding: 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.56);
-  border: 1px solid rgba(132, 174, 214, 0.44);
+  background: rgba(246, 252, 255, 0.68);
+  border: 1px solid rgba(182, 214, 238, 0.58);
 }
 
 .top-main-tabs {
@@ -310,17 +328,18 @@ a:hover {
   border-color: transparent;
   background: linear-gradient(125deg, var(--primary), var(--primary-2));
   color: #fff;
-  box-shadow: 0 10px 22px rgba(15, 95, 211, 0.25);
+  box-shadow: 0 12px 24px rgba(15, 95, 211, 0.3);
 }
 
 .hub-subtab-card {
-  padding: 12px;
+  padding: 10px 12px;
+  background: rgba(248, 252, 255, 0.74);
 }
 
 .hub-subtab-title {
   margin: 0 0 8px;
   color: #2f5f8f;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -514,10 +533,13 @@ textarea {
   color: #fff;
   background: linear-gradient(130deg, var(--primary), var(--primary-2));
   box-shadow: 0 10px 22px rgba(18, 109, 190, 0.26);
+  background-size: 180% 180%;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-position 0.32s ease;
 }
 
 .btn-primary:hover {
   filter: brightness(1.04);
+  background-position: 100% 0;
 }
 
 .btn-secondary {
@@ -547,6 +569,7 @@ textarea {
   padding: 16px;
   margin-bottom: 12px;
   box-shadow: var(--shadow-soft);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .card::before {
@@ -561,6 +584,123 @@ textarea {
 .card > * {
   position: relative;
   z-index: 1;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 36px rgba(15, 58, 105, 0.14);
+  border-color: rgba(121, 170, 212, 0.35);
+}
+
+.GlassCard,
+.glass-card {
+  background: rgba(255, 255, 255, 0.74);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(150, 193, 227, 0.36);
+}
+
+.SectionCard,
+.section-card {
+  border-radius: 22px;
+  padding: 18px;
+}
+
+.SummaryCard,
+.DetailCard,
+.ActionCard,
+.summary-card,
+.detail-card,
+.action-card {
+  border-radius: 20px;
+  border: 1px solid rgba(145, 188, 223, 0.4);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10px 24px rgba(14, 60, 102, 0.1);
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.summary-card h3,
+.detail-card h3,
+.action-card h3 {
+  margin: 0;
+  color: #164468;
+  font-size: 1.03rem;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+
+.WeatherBadge,
+.RoleBadge,
+.TravelModeChip,
+.DateChip,
+.StatusChip,
+.weather-badge,
+.role-badge,
+.travel-mode-chip,
+.date-chip,
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.WeatherBadge,
+.weather-badge {
+  border: 1px solid rgba(148, 191, 224, 0.52);
+  background: rgba(237, 249, 255, 0.95);
+  color: #24557f;
+}
+
+.RoleBadge,
+.role-badge {
+  border: 1px solid rgba(161, 196, 234, 0.56);
+  background: rgba(239, 246, 255, 0.97);
+  color: #274f7b;
+}
+
+.TravelModeChip,
+.travel-mode-chip {
+  border: 1px solid rgba(152, 197, 220, 0.56);
+  background: rgba(233, 253, 249, 0.95);
+  color: #1e6278;
+}
+
+.DateChip,
+.date-chip {
+  border: 1px solid rgba(167, 194, 230, 0.54);
+  background: rgba(243, 246, 255, 0.96);
+  color: #2f5281;
+}
+
+.StatusChip,
+.status-chip {
+  border: 1px solid rgba(170, 196, 229, 0.56);
+  background: rgba(246, 251, 255, 0.96);
+  color: #2c537f;
+}
+
+.empty-state-text {
+  margin: 2px 0;
+  color: #4f6e90;
+  font-weight: 600;
+}
+
+.route-emphasis {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 820;
+  color: #103b61;
 }
 
 .trip-card h2,
@@ -637,6 +777,82 @@ textarea {
   margin: 0;
   color: #4e6f91;
   font-size: 0.9rem;
+}
+
+.flight-dashboard-grid,
+.hotel-dashboard-grid,
+.information-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.information-grid {
+  grid-template-columns: 1fr 1.2fr;
+}
+
+.boarding-pass-card {
+  position: relative;
+}
+
+.boarding-pass-card::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 1px;
+  background: repeating-linear-gradient(90deg, rgba(120, 170, 215, 0.65) 0 8px, transparent 8px 16px);
+}
+
+.timeline-list {
+  display: grid;
+  gap: 7px;
+}
+
+.timeline-list p {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.88rem;
+  color: #355a82;
+  border-bottom: 1px dashed rgba(148, 189, 224, 0.42);
+  padding-bottom: 6px;
+}
+
+.timeline-list strong {
+  color: #163e66;
+}
+
+.inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inline-link-btn {
+  display: inline-flex;
+  width: fit-content;
+  text-decoration: none;
+}
+
+.transport-card {
+  cursor: pointer;
+}
+
+.transport-card.active {
+  border-color: rgba(68, 149, 213, 0.6);
+  box-shadow: 0 14px 28px rgba(19, 81, 132, 0.16);
+}
+
+.transport-detail-panel {
+  margin-bottom: 12px;
+}
+
+.activity-card .thumb {
+  filter: saturate(1.1);
 }
 
 .packing-permission-row {
@@ -1372,7 +1588,10 @@ textarea {
   .grid.three,
   .trip-row,
   .profile-grid,
-  .workspace-grid {
+  .workspace-grid,
+  .flight-dashboard-grid,
+  .hotel-dashboard-grid,
+  .information-grid {
     grid-template-columns: 1fr;
   }
 
