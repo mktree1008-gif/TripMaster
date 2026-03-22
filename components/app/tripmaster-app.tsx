@@ -658,6 +658,15 @@ function TopHeroHeader({
   isAuthOpen,
   backendConfigured,
   onBrandClick,
+  flightOrigin,
+  onFlightOriginChange,
+  flightDestination,
+  onFlightDestinationChange,
+  departureDate,
+  onDepartureDateChange,
+  returnDate,
+  onReturnDateChange,
+  onExploreFlight,
 }: {
   language: LanguageCode;
   onLanguageChange: (language: LanguageCode) => void;
@@ -673,7 +682,17 @@ function TopHeroHeader({
   isAuthOpen: boolean;
   backendConfigured: boolean;
   onBrandClick: () => void;
+  flightOrigin: string;
+  onFlightOriginChange: (code: string) => void;
+  flightDestination: string;
+  onFlightDestinationChange: (code: string) => void;
+  departureDate: string;
+  onDepartureDateChange: (value: string) => void;
+  returnDate: string;
+  onReturnDateChange: (value: string) => void;
+  onExploreFlight: () => void;
 }) {
+  const heroAirports = airports;
   return (
     <header className="hero-airlink-shell">
       <div className="hero-airlink-overlay" />
@@ -746,23 +765,57 @@ function TopHeroHeader({
           </div>
 
           <div className="hero-airlink-searchdock">
-            <div className="hero-airlink-field">
+            <label className="hero-airlink-field">
               <span>From</span>
-              <strong>Choose departure</strong>
-            </div>
-            <div className="hero-airlink-field">
+              <select
+                className="hero-airlink-field-control"
+                value={flightOrigin}
+                onChange={(event) => onFlightOriginChange(event.target.value)}
+                aria-label="Departure airport"
+              >
+                {heroAirports.map((airport) => (
+                  <option key={`hero-origin-${airport.code}`} value={airport.code}>
+                    {airport.code} · {airport.city}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="hero-airlink-field">
               <span>To</span>
-              <strong>Destination city</strong>
-            </div>
-            <div className="hero-airlink-field">
+              <select
+                className="hero-airlink-field-control"
+                value={flightDestination}
+                onChange={(event) => onFlightDestinationChange(event.target.value)}
+                aria-label="Destination airport"
+              >
+                {heroAirports.map((airport) => (
+                  <option key={`hero-destination-${airport.code}`} value={airport.code}>
+                    {airport.code} · {airport.city}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="hero-airlink-field">
               <span>Departure</span>
-              <strong>Pick a date</strong>
-            </div>
-            <div className="hero-airlink-field">
+              <input
+                type="date"
+                className="hero-airlink-field-control"
+                value={departureDate}
+                onChange={(event) => onDepartureDateChange(event.target.value)}
+                aria-label="Departure date"
+              />
+            </label>
+            <label className="hero-airlink-field">
               <span>Return</span>
-              <strong>Pick a date</strong>
-            </div>
-            <button type="button" className="hero-airlink-searchbtn" onClick={onBrandClick}>
+              <input
+                type="date"
+                className="hero-airlink-field-control"
+                value={returnDate}
+                onChange={(event) => onReturnDateChange(event.target.value)}
+                aria-label="Return date"
+              />
+            </label>
+            <button type="button" className="hero-airlink-searchbtn" onClick={onExploreFlight}>
               Explore
             </button>
             <label className="hero-airlink-toggle">
@@ -2581,6 +2634,15 @@ export function TripMasterApp() {
           isAuthOpen={showAuthPanel}
           onBrandClick={() => scrollToSection('main-tabs-anchor')}
           backendConfigured={backendConfigured}
+          flightOrigin={flightOrigin}
+          onFlightOriginChange={setFlightOrigin}
+          flightDestination={flightDestination}
+          onFlightDestinationChange={setFlightDestination}
+          departureDate={departureDate}
+          onDepartureDateChange={setDepartureDate}
+          returnDate={returnDate}
+          onReturnDateChange={setReturnDate}
+          onExploreFlight={() => openMainTab('flight', 'main-tabs-anchor')}
         />
       }
       tripWorkspaceSection={

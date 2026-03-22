@@ -2890,6 +2890,37 @@ select:focus {
   color: #1a4e79;
 }
 
+.hero-airlink-field-control {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.25;
+  color: #1a4e79;
+  font-weight: 700;
+  outline: none;
+}
+
+.hero-airlink-field-control[type='date'] {
+  font-weight: 650;
+}
+
+.hero-airlink-field-control:focus-visible {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22);
+  border-radius: 8px;
+}
+
+select.hero-airlink-field-control {
+  cursor: pointer;
+}
+
+.hero-airlink-field-control::-webkit-calendar-picker-indicator {
+  opacity: 0.75;
+  cursor: pointer;
+}
+
 .hero-airlink-searchbtn {
   border: 0;
   border-radius: 12px;
@@ -4185,6 +4216,10 @@ select:focus {
   }
 
   .hero-airlink-field strong {
+    font-size: 0.8rem;
+  }
+
+  .hero-airlink-field-control {
     font-size: 0.8rem;
   }
 
