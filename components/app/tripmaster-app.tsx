@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { AuthPanel } from '@/components/auth/auth-panel';
 import { CommentsThread } from '@/components/comments/comments-thread';
 import { airportCountryMap, cityImages, countryCities } from '@/lib/curated-data';
@@ -251,6 +251,292 @@ function readLocalJson<T>(key: string, fallback: T): T {
 function writeLocalJson<T>(key: string, value: T) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function cn(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ');
+}
+
+interface AppShellProps {
+  topHeroHeader: ReactNode;
+  tripWorkspaceSection: ReactNode;
+  primaryTabBar: ReactNode;
+  activePage: ReactNode;
+  statusToast?: ReactNode;
+}
+
+function AppShell({ topHeroHeader, tripWorkspaceSection, primaryTabBar, activePage, statusToast }: AppShellProps) {
+  return (
+    <div className="min-h-screen bg-[linear-gradient(180deg,#eaf4ff_0%,#f8fbff_45%,#ffffff_100%)] text-slate-900">
+      <BackgroundLayer />
+      {statusToast}
+      <div className="relative z-10">
+        {topHeroHeader}
+        <main className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+          <div className="-mt-8 space-y-6">
+            {tripWorkspaceSection}
+            {primaryTabBar}
+            {activePage}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function BackgroundLayer() {
+  return (
+    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.18),transparent_30%),radial-gradient(circle_at_top_right,rgba(20,184,166,0.14),transparent_28%)]" />
+      <div className="absolute inset-x-0 top-0 h-72 bg-[linear-gradient(180deg,rgba(29,78,216,0.10),transparent)]" />
+    </div>
+  );
+}
+
+function HeaderIconButton({
+  icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className={cn(
+        'inline-flex h-11 w-11 items-center justify-center rounded-2xl text-lg backdrop-blur transition',
+        active ? 'bg-white/28 text-white' : 'bg-white/14 text-white hover:bg-white/22'
+      )}
+    >
+      <span aria-hidden>{icon}</span>
+    </button>
+  );
+}
+
+function PrimaryButton({ children, type = 'button', onClick }: { children: ReactNode; type?: 'button' | 'submit'; onClick?: () => void }) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      className="inline-flex items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#1d4ed8,#14b8a6)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(29,78,216,0.25)] transition hover:-translate-y-0.5"
+    >
+      {children}
+    </button>
+  );
+}
+
+function GlassCard({ className = '', children }: { className?: string; children: ReactNode }) {
+  return (
+    <section
+      className={cn(
+        'rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_10px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl',
+        className
+      )}
+    >
+      {children}
+    </section>
+  );
+}
+
+function TripWorkspaceSection({ children }: { children: ReactNode }) {
+  return (
+    <section>
+      <div className="mb-3">
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Trip Workspace</p>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Organize the trip before takeoff</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Keep current trip context, create/join flow, and collaboration permissions in one balanced workspace.
+        </p>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function SectionEyebrow({ children }: { children: ReactNode }) {
+  return <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{children}</p>;
+}
+
+function Chip({ children }: { children: ReactNode }) {
+  return <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">{children}</span>;
+}
+
+function MiniInfo({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+      <span className="text-sm text-slate-500">{label}</span>
+      <span className="text-sm font-semibold text-slate-800">{value}</span>
+    </div>
+  );
+}
+
+function PrimaryTabBar({
+  tabs,
+  active,
+  onSelect,
+}: {
+  tabs: Array<{ key: TabKey; label: string; icon: string }>;
+  active: TabKey;
+  onSelect: (tab: TabKey) => void;
+}) {
+  return (
+    <div className="rounded-[28px] border border-white/60 bg-white/75 p-2 shadow-[0_10px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        {tabs.map((tab) => {
+          const isActive = tab.key === active;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => onSelect(tab.key)}
+              className={cn(
+                'flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                isActive
+                  ? 'bg-[linear-gradient(135deg,#1d4ed8,#14b8a6)] text-white shadow-[0_8px_24px_rgba(29,78,216,0.25)]'
+                  : 'text-slate-600 hover:bg-slate-50'
+              )}
+            >
+              <span aria-hidden>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PageHeader({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
+  return (
+    <div className="mb-5">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+          <p className="mt-1 text-sm text-slate-500">{description}</p>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function SubTabBar({
+  items,
+  active,
+}: {
+  items: Array<{ key: string; label: string; icon?: string; onClick: () => void }>;
+  active: string;
+}) {
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {items.map((item) => {
+        const isActive = item.key === active;
+        return (
+          <button
+            key={item.key}
+            type="button"
+            onClick={item.onClick}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition',
+              isActive ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+            )}
+          >
+            {item.icon ? <span aria-hidden>{item.icon}</span> : null}
+            <span>{item.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function TopHeroHeader({
+  language,
+  onLanguageChange,
+  onProfileClick,
+  onSettingsClick,
+  profileActive,
+  settingsActive,
+  autoTranslate,
+  onAutoTranslateChange,
+  authContent,
+  backendConfigured,
+  onBrandClick,
+}: {
+  language: LanguageCode;
+  onLanguageChange: (language: LanguageCode) => void;
+  onProfileClick: () => void;
+  onSettingsClick: () => void;
+  profileActive: boolean;
+  settingsActive: boolean;
+  autoTranslate: boolean;
+  onAutoTranslateChange: (next: boolean) => void;
+  authContent: ReactNode;
+  backendConfigured: boolean;
+  onBrandClick: () => void;
+}) {
+  return (
+    <header className="relative overflow-hidden rounded-b-[32px] bg-[linear-gradient(135deg,#0f3b8f_0%,#0f766e_100%)] text-white shadow-[0_20px_60px_rgba(15,23,42,0.25)]">
+      <div className="absolute inset-0 bg-black/20" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(255,255,255,0.18),transparent_22%)]" />
+      <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl">
+            <button type="button" onClick={onBrandClick} className="text-left">
+              <p className="text-xs uppercase tracking-[0.24em] text-white/70">TripMaster</p>
+              <h1 className="mt-2 text-3xl font-bold leading-tight sm:text-5xl">Plan every trip with clarity and excitement</h1>
+            </button>
+            <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-base">
+              Flights, stays, planning, and local info in one premium travel workspace.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">Airline-inspired dashboard</span>
+              <span className="rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">Shared travel journal</span>
+              <span className="rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">Real planning workflow</span>
+            </div>
+          </div>
+
+          <div className="w-full max-w-md space-y-3">
+            <div className="flex items-center justify-end gap-2">
+              <label className="flex h-11 items-center gap-2 rounded-2xl bg-white/14 px-3 text-sm text-white backdrop-blur transition hover:bg-white/22">
+                <span aria-hidden>🌐</span>
+                <select
+                  value={language}
+                  onChange={(event) => onLanguageChange(event.target.value as LanguageCode)}
+                  aria-label="Language"
+                  className="min-w-0 bg-transparent text-sm text-white outline-none"
+                >
+                  {languageOrder.map((item) => (
+                    <option key={item.code} value={item.code} className="text-slate-900">
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <HeaderIconButton icon="👤" label="Profile" active={profileActive} onClick={onProfileClick} />
+              <HeaderIconButton icon="⚙️" label="Settings" active={settingsActive} onClick={onSettingsClick} />
+            </div>
+            <label className="flex items-center gap-2 rounded-2xl bg-white/14 px-4 py-3 text-sm text-white/90 backdrop-blur">
+              <input type="checkbox" checked={autoTranslate} onChange={(event) => onAutoTranslateChange(event.target.checked)} />
+              Auto-translate shared content
+            </label>
+            <div className="rounded-3xl border border-white/25 bg-white/12 p-3 backdrop-blur-xl">{authContent}</div>
+            {!backendConfigured ? (
+              <p className="rounded-xl border border-rose-200/40 bg-rose-900/35 px-3 py-2 text-sm text-rose-50">
+                Backend is not configured yet. Set real Supabase environment variables to enable save/login.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
 }
 
 export function TripMasterApp() {
@@ -1704,325 +1990,222 @@ export function TripMasterApp() {
     planHelperSubTab === 'activities'
       ? placesResponse.places.filter((place) => place.theme === 'activity')
       : placesResponse.places;
+  const primaryNavTabs = [
+    { key: 'flight' as TabKey, label: 'Flight', icon: '✈️' },
+    { key: 'hotel' as TabKey, label: 'Hotel', icon: '🏨' },
+    { key: 'places' as TabKey, label: 'PlanHelper', icon: '🧭' },
+    { key: 'restaurants' as TabKey, label: 'Information', icon: 'ℹ️' },
+  ];
+  const activePrimaryTab: TabKey = ['flight', 'hotel', 'places', 'restaurants'].includes(activeTab) ? activeTab : 'flight';
+  const planHelperSubTabItems = [
+    { key: 'places', label: 'Places', icon: '📍', onClick: () => setPlanHelperSubTab('places') },
+    {
+      key: 'activities',
+      label: 'Activities',
+      icon: '🧗',
+      onClick: () => {
+        setPlanHelperSubTab('activities');
+        setPlacesTheme('activity');
+      },
+    },
+    { key: 'restaurants', label: 'Restaurants', icon: '🍽️', onClick: () => setPlanHelperSubTab('restaurants') },
+    { key: 'transportation', label: 'Transportation', icon: '🚄', onClick: () => setPlanHelperSubTab('transportation') },
+  ];
+  const informationSubTabItems = [
+    { key: 'information', label: 'Information', icon: '🌍', onClick: () => setInformationSubTab('information') },
+    { key: 'event', label: 'Events / Festival', icon: '🎫', onClick: () => setInformationSubTab('event') },
+    { key: 'tips', label: 'Tips', icon: '💬', onClick: () => setInformationSubTab('tips') },
+  ];
 
   return (
-    <div className="tripmaster-shell">
-      {statusToast ? (
-        <div
-          className={`status-toast is-${statusToast.tone}`}
-          role={statusToast.tone === 'error' ? 'alert' : 'status'}
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          <span>{statusToast.message}</span>
-          <button type="button" className="status-toast-close" onClick={() => setStatusToast(null)} aria-label="Close notification">
-            ✕
-          </button>
-        </div>
-      ) : null}
-      <header className="top-nav-shell">
-        <div className="top-nav-row">
-          <div className="brand-stack">
-            <button type="button" className="brand-mark" onClick={() => scrollToSection('main-tabs-anchor')}>
-              ✈️ TripMaster
+    <AppShell
+      statusToast={
+        statusToast ? (
+          <div
+            className={`status-toast is-${statusToast.tone}`}
+            role={statusToast.tone === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <span>{statusToast.message}</span>
+            <button type="button" className="status-toast-close" onClick={() => setStatusToast(null)} aria-label="Close notification">
+              ✕
             </button>
-            <p className="brand-tagline">Plan with confidence, travel with excitement.</p>
           </div>
-          <div className="top-nav-actions">
-            <label className="utility-language">
-              <span aria-hidden>🌐</span>
-              <select value={language} onChange={(event) => setLanguage(event.target.value as LanguageCode)} aria-label="Language">
-                {languageOrder.map((item) => (
-                  <option key={item.code} value={item.code}>
-                    {item.label}
-                  </option>
+        ) : null
+      }
+      topHeroHeader={
+        <TopHeroHeader
+          language={language}
+          onLanguageChange={setLanguage}
+          onProfileClick={() => (nickname ? openAccountTab('profile') : openLoginPanelFromMenu())}
+          onSettingsClick={() => (nickname ? openAccountTab('settings') : openLoginPanelFromMenu())}
+          profileActive={activeTab === 'profile'}
+          settingsActive={activeTab === 'settings'}
+          autoTranslate={autoTranslate}
+          onAutoTranslateChange={setAutoTranslate}
+          onBrandClick={() => scrollToSection('main-tabs-anchor')}
+          backendConfigured={backendConfigured}
+          authContent={
+            <div id="hero-auth-anchor">
+              {showAuthPanel || Boolean(nickname) ? (
+                <AuthPanel
+                  supabase={supabase}
+                  language={language}
+                  currentNickname={nickname}
+                  onSignedIn={onSignedIn}
+                  onSignedOut={onSignedOut}
+                />
+              ) : (
+                <button type="button" className="btn-secondary auth-open-btn" onClick={() => setShowAuthPanel(true)}>
+                  Open login / account panel
+                </button>
+              )}
+            </div>
+          }
+        />
+      }
+      tripWorkspaceSection={
+        <TripWorkspaceSection>
+          <div className="grid gap-4 lg:grid-cols-12">
+            <GlassCard className="lg:col-span-4">
+              <SectionEyebrow>Current Trip</SectionEyebrow>
+              <h2 className="mt-2 text-xl font-semibold">{selectedTripTitle || 'Choose your trip workspace'}</h2>
+              <label className="mt-4 block text-sm text-slate-600">
+                Select trip
+                <select className="mt-2 w-full" value={selectedTripId} onChange={(event) => setSelectedTripId(event.target.value)}>
+                  <option value="">Select</option>
+                  {trips.map((trip) => (
+                    <option key={trip.id} value={trip.id}>
+                      {trip.title} ({trip.role})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Chip>{selectedTrip ? selectedTrip.role.toUpperCase() : 'No role selected'}</Chip>
+                <Chip>{selectedTrip ? selectedTrip.destinationCountry ?? 'No country' : 'No country'}</Chip>
+                <Chip>{flightTripType}</Chip>
+              </div>
+              <p className="mt-3 text-sm text-slate-500">
+                {selectedTrip
+                  ? 'Trip context loaded. You can now manage invites and planning cards.'
+                  : 'Choose a trip to manage invites, packing permissions, and shared history.'}
+              </p>
+              <button
+                type="button"
+                className="btn-secondary danger mt-4 w-full"
+                onClick={deleteSelectedTrip}
+                disabled={!selectedTripId || deletingTrip || deletingAllTrips}
+              >
+                Delete Selected Trip
+              </button>
+            </GlassCard>
+
+            <GlassCard className="lg:col-span-5">
+              <SectionEyebrow>Create / Join</SectionEyebrow>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <input value={newTripTitle} onChange={(event) => setNewTripTitle(event.target.value)} placeholder="New trip title" />
+                <PrimaryButton onClick={createTrip}>Create Trip</PrimaryButton>
+                <input placeholder="Paste invite code" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} />
+                <button type="button" className="btn-secondary" onClick={acceptInvite}>
+                  Accept Invite
+                </button>
+              </div>
+            </GlassCard>
+
+            <GlassCard className="lg:col-span-3">
+              <SectionEyebrow>Collaboration</SectionEyebrow>
+              <button type="button" className="btn-secondary mt-4 w-full" onClick={createInvite} disabled={!nickname || !selectedTripId}>
+                Create Invite Link
+              </button>
+              <div className="mt-4 rounded-2xl bg-slate-50 p-3">
+                <p className="text-sm font-medium text-slate-800">Invited members can edit packing list</p>
+                <label className="mt-2 inline-flex items-center gap-2 text-sm text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(selectedTrip?.allowMemberPackingEdit)}
+                    onChange={(event) => updateTripPackingPermission(event.target.checked)}
+                    disabled={!selectedTripId || !canChangePackingPermission || updatingPackingPermission}
+                  />
+                  <span>{selectedTrip?.allowMemberPackingEdit ? 'ON' : 'OFF'}</span>
+                </label>
+                <p className="mt-1 text-xs text-slate-500">Default OFF. Turn ON to allow invited members too.</p>
+              </div>
+              {generatedInviteLink ? <p className="info-text mt-3">Invite: {generatedInviteLink}</p> : null}
+              <button
+                type="button"
+                className="btn-secondary danger mt-3 w-full"
+                onClick={deleteAllTrips}
+                disabled={!trips.length || deletingTrip || deletingAllTrips}
+              >
+                Delete All My Trips
+              </button>
+            </GlassCard>
+          </div>
+        </TripWorkspaceSection>
+      }
+      primaryTabBar={
+        <div id="main-tabs-anchor" className="space-y-3">
+          <PrimaryTabBar tabs={primaryNavTabs} active={activePrimaryTab} onSelect={onMainNavSelect} />
+          {showMobileMenu ? (
+            <div className="rounded-3xl border border-white/60 bg-white/75 p-4 shadow-[0_10px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl md:hidden">
+              <p className="mb-2 text-xs uppercase tracking-[0.2em] text-slate-400">Menu</p>
+              <div className="grid grid-cols-2 gap-2">
+                {mainTabs.map((tab) => (
+                  <button
+                    key={`mobile-main-${tab.key}`}
+                    type="button"
+                    className={cn(
+                      'rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600',
+                      activeTab === tab.key && 'bg-slate-900 text-white'
+                    )}
+                    onClick={() => onMobileMainTabSelect(tab.key)}
+                  >
+                    {tab.icon} {tab.shortLabel}
+                  </button>
                 ))}
-              </select>
-            </label>
+              </div>
+            </div>
+          ) : null}
+          <div className="flex justify-end md:hidden">
             <button
               type="button"
-              className={activeTab === 'profile' ? 'utility-icon-btn active' : 'utility-icon-btn'}
-              onClick={() => (nickname ? openAccountTab('profile') : openLoginPanelFromMenu())}
-              aria-label="Profile"
-            >
-              <span aria-hidden>👤</span>
-              <span className="utility-btn-text">Profile</span>
-            </button>
-            <button
-              type="button"
-              className={activeTab === 'settings' ? 'utility-icon-btn active' : 'utility-icon-btn'}
-              onClick={() => (nickname ? openAccountTab('settings') : openLoginPanelFromMenu())}
-              aria-label="Settings"
-            >
-              <span aria-hidden>⚙️</span>
-              <span className="utility-btn-text">Settings</span>
-            </button>
-            <button
-              type="button"
-              className="mobile-menu-btn"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600"
               aria-label="Open tab menu"
               aria-expanded={showMobileMenu}
               onClick={() => setShowMobileMenu((prev) => !prev)}
             >
-              ⋮
+              Menu {showMobileMenu ? '▲' : '▼'}
             </button>
           </div>
         </div>
-        {showMobileMenu ? (
-          <div className="mobile-menu-panel">
-            <p className="mobile-menu-title">Menu</p>
-            <div className="mobile-menu-grid">
-              {mainTabs.map((tab) => (
-                <button
-                  key={`mobile-main-${tab.key}`}
-                  type="button"
-                  className={activeTab === tab.key ? 'mobile-menu-item active' : 'mobile-menu-item'}
-                  onClick={() => onMobileMainTabSelect(tab.key)}
-                >
-                  <span aria-hidden>{tab.icon}</span> <span>{tab.shortLabel}</span>
+      }
+      activePage={
+        <>
+          {activeTab === 'flight' || activeTab === 'hotel' || activeTab === 'places' || activeTab === 'restaurants' ? (
+            <GlassCard className="journey-tools-card">
+              <SectionEyebrow>Journey Studio</SectionEyebrow>
+              <div className="journey-tools-row mt-3">
+                <button type="button" className="journey-tool-btn" onClick={() => openMainTab('record', 'tab-record-section')}>
+                  <span aria-hidden>🧳</span>
+                  <span>Record</span>
                 </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-        <nav id="main-tabs-anchor" className="main-tabs top-main-tabs">
-          {mainTabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              className={activeTab === tab.key ? 'tab-btn active' : 'tab-btn'}
-              onClick={() => onMainNavSelect(tab.key)}
-            >
-              <span className="tab-icon" aria-hidden>
-                {tab.icon}
-              </span>
-              <span className="tab-label">{tab.fallbackLabel}</span>
-            </button>
-          ))}
-        </nav>
-      </header>
-
-      <header className="hero-header">
-        <div className="hero-copy-block">
-          <p className="eyebrow">TripMaster</p>
-          <h1>{copy.appTitle}</h1>
-          <p>{copy.appSubtitle}</p>
-          <div className="hero-highlights">
-            <span>✈️ Airline-style planning workspace</span>
-            <span>🚄 Route-aware itinerary assistance</span>
-            <span>📍 Curated discovery with trusted structure</span>
-          </div>
-        </div>
-        <div id="hero-auth-anchor" className="hero-auth-block">
-          <label className="hero-translate-toggle">
-            <input type="checkbox" checked={autoTranslate} onChange={(event) => setAutoTranslate(event.target.checked)} />
-            Auto-translate shared content
-          </label>
-
-          {showAuthPanel || Boolean(nickname) ? (
-            <AuthPanel supabase={supabase} language={language} currentNickname={nickname} onSignedIn={onSignedIn} onSignedOut={onSignedOut} />
-          ) : (
-            <button type="button" className="btn-secondary auth-open-btn" onClick={() => setShowAuthPanel(true)}>
-              Open login / account panel
-            </button>
-          )}
-        </div>
-        {!backendConfigured ? (
-          <p className="error-text hero-error">Backend is not configured yet. Set real Supabase environment variables to enable save/login.</p>
-        ) : null}
-      </header>
-
-      <section className="card section-card glass-card trip-card">
-        <div className="workspace-header">
-          <h2>🧾 Trip Workspace</h2>
-          <p>Manage your current trip, create or join trips, and collaboration permissions in one premium workspace.</p>
-        </div>
-        <div className="workspace-grid">
-          <article className="workspace-panel summary-card glass-card">
-            <h3>Current Trip</h3>
-            <label>
-              Select trip
-              <select value={selectedTripId} onChange={(event) => setSelectedTripId(event.target.value)}>
-                <option value="">Select</option>
-                {trips.map((trip) => (
-                  <option key={trip.id} value={trip.id}>
-                    {trip.title} ({trip.role})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="workspace-meta">
-              {selectedTrip ? 'Trip context loaded. You can now manage invites and planning cards.' : 'Choose a trip to manage invites, packing permissions, and shared history.'}
-            </p>
-            {selectedTrip ? (
-              <div className="chip-row">
-                <span className="role-badge">Role: {selectedTrip.role.toUpperCase()}</span>
-                <span className="status-chip">Country: {selectedTrip.destinationCountry ?? 'Not synced yet'}</span>
-                <span className="travel-mode-chip">Mode: {flightTripType}</span>
+                <button type="button" className="journey-tool-btn" onClick={() => openMainTab('diary', 'tab-diary-section')}>
+                  <span aria-hidden>📔</span>
+                  <span>{copy.diary}</span>
+                </button>
+                <button type="button" className="journey-tool-btn" onClick={() => openMainTab('tripstargram', 'tab-tripstargram-section')}>
+                  <span aria-hidden>📸</span>
+                  <span>{copy.tripstargram ?? 'Tripstargram'}</span>
+                </button>
               </div>
-            ) : null}
-            <button
-              type="button"
-              className="btn-secondary danger"
-              onClick={deleteSelectedTrip}
-              disabled={!selectedTripId || deletingTrip || deletingAllTrips}
-            >
-              Delete Selected Trip
-            </button>
-          </article>
-
-          <article className="workspace-panel action-card glass-card">
-            <h3>Create / Join</h3>
-            <label>
-              New trip title
-              <input value={newTripTitle} onChange={(event) => setNewTripTitle(event.target.value)} />
-            </label>
-            <button type="button" className="btn-primary" onClick={createTrip}>
-              Create Trip
-            </button>
-            <label>
-              Invite code
-              <input placeholder="Paste invite code" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} />
-            </label>
-            <button type="button" className="btn-secondary" onClick={acceptInvite}>
-              Accept Invite
-            </button>
-          </article>
-
-          <article className="workspace-panel detail-card glass-card">
-            <h3>Collaboration</h3>
-            <button type="button" className="btn-secondary" onClick={createInvite} disabled={!nickname || !selectedTripId}>
-              Create Invite Link
-            </button>
-            <div className="packing-permission-row">
-              <span className="packing-permission-label">Invited members can edit packing list</span>
-              <label className="packing-permission-toggle">
-                <input
-                  type="checkbox"
-                  checked={Boolean(selectedTrip?.allowMemberPackingEdit)}
-                  onChange={(event) => updateTripPackingPermission(event.target.checked)}
-                  disabled={!selectedTripId || !canChangePackingPermission || updatingPackingPermission}
-                />
-                <span>{selectedTrip?.allowMemberPackingEdit ? 'ON' : 'OFF'}</span>
-              </label>
-              <p className="packing-permission-note">
-                Default OFF: only editors can edit. Turn ON to allow invited members too.
-              </p>
-            </div>
-            {generatedInviteLink ? <p className="info-text">Invite: {generatedInviteLink}</p> : null}
-            <button
-              type="button"
-              className="btn-secondary danger"
-              onClick={deleteAllTrips}
-              disabled={!trips.length || deletingTrip || deletingAllTrips}
-            >
-              Delete All My Trips
-            </button>
-          </article>
-        </div>
-      </section>
-
-      {activeTab === 'flight' || activeTab === 'hotel' || activeTab === 'places' || activeTab === 'restaurants' ? (
-        <section className="card section-card glass-card journey-tools-card">
-          <p className="hub-subtab-title">Journey Studio</p>
-          <div className="journey-tools-row">
-            <button type="button" className="journey-tool-btn" onClick={() => openMainTab('record', 'tab-record-section')}>
-              <span aria-hidden>🧳</span>
-              <span>Record</span>
-            </button>
-            <button type="button" className="journey-tool-btn" onClick={() => openMainTab('diary', 'tab-diary-section')}>
-              <span aria-hidden>📔</span>
-              <span>{copy.diary}</span>
-            </button>
-            <button type="button" className="journey-tool-btn" onClick={() => openMainTab('tripstargram', 'tab-tripstargram-section')}>
-              <span aria-hidden>📸</span>
-              <span>{copy.tripstargram ?? 'Tripstargram'}</span>
-            </button>
-          </div>
-        </section>
-      ) : null}
-
-      {activeTab === 'places' ? (
-        <section className="card section-card glass-card hub-subtab-card">
-          <p className="hub-subtab-title">PlanHelper</p>
-          <div className="hub-subtab-list">
-            <button
-              type="button"
-              className={planHelperSubTab === 'places' ? 'sub-tab active' : 'sub-tab'}
-              onClick={() => setPlanHelperSubTab('places')}
-            >
-              <span aria-hidden>📍</span>
-              <span>Places</span>
-            </button>
-            <button
-              type="button"
-              className={planHelperSubTab === 'activities' ? 'sub-tab active' : 'sub-tab'}
-              onClick={() => {
-                setPlanHelperSubTab('activities');
-                setPlacesTheme('activity');
-              }}
-            >
-              <span aria-hidden>🧗</span>
-              <span>Activities</span>
-            </button>
-            <button
-              type="button"
-              className={planHelperSubTab === 'restaurants' ? 'sub-tab active' : 'sub-tab'}
-              onClick={() => setPlanHelperSubTab('restaurants')}
-            >
-              <span aria-hidden>🍽️</span>
-              <span>Restaurants</span>
-            </button>
-            <button
-              type="button"
-              className={planHelperSubTab === 'transportation' ? 'sub-tab active' : 'sub-tab'}
-              onClick={() => setPlanHelperSubTab('transportation')}
-            >
-              <span aria-hidden>🚄</span>
-              <span>Transportation</span>
-            </button>
-          </div>
-        </section>
-      ) : null}
-
-      {activeTab === 'restaurants' ? (
-        <section className="card section-card glass-card hub-subtab-card">
-          <p className="hub-subtab-title">Information</p>
-          <div className="hub-subtab-list">
-            <button
-              type="button"
-              className={informationSubTab === 'information' ? 'sub-tab active' : 'sub-tab'}
-              onClick={() => setInformationSubTab('information')}
-            >
-              <span aria-hidden>🌍</span>
-              <span>Information</span>
-            </button>
-            <button
-              type="button"
-              className={informationSubTab === 'event' ? 'sub-tab active' : 'sub-tab'}
-              onClick={() => setInformationSubTab('event')}
-            >
-              <span aria-hidden>🎫</span>
-              <span>Events/Festival</span>
-            </button>
-            <button
-              type="button"
-              className={informationSubTab === 'tips' ? 'sub-tab active' : 'sub-tab'}
-              onClick={() => setInformationSubTab('tips')}
-            >
-              <span aria-hidden>💬</span>
-              <span>Tips</span>
-            </button>
-          </div>
-        </section>
-      ) : null}
+            </GlassCard>
+          ) : null}
 
       {activeTab === 'flight' ? (
         <section className="card section-card glass-card">
-          <div className="section-heading">
-            <p className="section-kicker">✈️ Flight Center</p>
-            <h2>Find the best fare and fly with confidence</h2>
-          </div>
+          <PageHeader title="Flight" description="Search, compare, and save the flights that shape your trip." />
           <div className="flight-dashboard-grid">
             <article className="summary-card glass-card boarding-pass-card">
               <h3>Upcoming Flight</h3>
@@ -2203,10 +2386,10 @@ export function TripMasterApp() {
 
       {activeTab === 'hotel' ? (
         <section className="card section-card glass-card">
-          <div className="section-heading">
-            <p className="section-kicker">🏨 Hotel Desk</p>
-            <h2>Compare trusted stays in one clean view</h2>
-          </div>
+          <PageHeader
+            title="Hotel"
+            description="Keep your stay organized with reservation, check-in, and location details."
+          />
 
           <div className="hotel-dashboard-grid">
             <article className="summary-card glass-card">
@@ -2328,10 +2511,16 @@ export function TripMasterApp() {
 
       {activeTab === 'places' && (planHelperSubTab === 'places' || planHelperSubTab === 'activities') ? (
         <section className="card section-card glass-card planhelper-section">
-          <div className="section-heading">
-            <p className="section-kicker">📍 Discovery Board</p>
-            <h2>{planHelperSubTab === 'activities' ? 'Pick active adventures for your style' : 'Choose places that match your trip mood'}</h2>
-          </div>
+          <PageHeader
+            title="PlanHelper"
+            description={
+              planHelperSubTab === 'activities'
+                ? 'Curate active experiences and select what fits your travel pace.'
+                : 'Choose places that match your mood, purpose, and route.'
+            }
+          >
+            <SubTabBar items={planHelperSubTabItems} active={planHelperSubTab} />
+          </PageHeader>
           <div className="grid three">
             <label>
               Country
@@ -2409,10 +2598,12 @@ export function TripMasterApp() {
 
       {activeTab === 'places' && planHelperSubTab === 'restaurants' ? (
         <section className="card section-card glass-card planhelper-section">
-          <div className="section-heading">
-            <p className="section-kicker">🍽️ Restaurant Picks</p>
-            <h2>Curated city-by-city dining recommendations</h2>
-          </div>
+          <PageHeader
+            title="PlanHelper"
+            description="City-by-city restaurant recommendations with cuisine and vibe tags."
+          >
+            <SubTabBar items={planHelperSubTabItems} active={planHelperSubTab} />
+          </PageHeader>
           <div className="grid two">
             <label>
               Country
@@ -2879,7 +3070,12 @@ export function TripMasterApp() {
 
       {activeTab === 'restaurants' && informationSubTab === 'information' ? (
         <section className="card section-card glass-card">
-          <h2>🌍 Information</h2>
+          <PageHeader
+            title="Information"
+            description="Destination context, curated highlights, and reliable local overview."
+          >
+            <SubTabBar items={informationSubTabItems} active={informationSubTab} />
+          </PageHeader>
           <div className="grid three">
             <label>
               Country
@@ -2942,7 +3138,12 @@ export function TripMasterApp() {
 
       {activeTab === 'places' && planHelperSubTab === 'transportation' ? (
         <section id="extra-plan-section" className="card section-card glass-card planhelper-section">
-          <h2>🚄 Transportation & Smart Plan</h2>
+          <PageHeader
+            title="PlanHelper"
+            description="Review route options, travel prep, and day-by-day itinerary with budget control."
+          >
+            <SubTabBar items={planHelperSubTabItems} active={planHelperSubTab} />
+          </PageHeader>
           <div className="result-list transport-route-list planhelper-card-grid">
             {transportOptions.length === 0 ? <p className="empty-state-text">No transportation route yet. Generate an itinerary first.</p> : null}
             {transportOptions.map((option) => {
@@ -3290,7 +3491,12 @@ export function TripMasterApp() {
 
       {activeTab === 'restaurants' && informationSubTab === 'tips' ? (
         <section className="card section-card glass-card">
-          <h2>💬 Tips</h2>
+          <PageHeader
+            title="Information"
+            description="Practical local advice from shared community memories."
+          >
+            <SubTabBar items={informationSubTabItems} active={informationSubTab} />
+          </PageHeader>
           <p>Community + global travel tips in friendly iMessage-like bubbles.</p>
           <div className="tips-bubbles">
             {tips.length === 0 ? <p className="empty-state-text">No tips yet. Share your first practical local advice.</p> : null}
@@ -3351,7 +3557,12 @@ export function TripMasterApp() {
 
       {activeTab === 'restaurants' && informationSubTab === 'event' ? (
         <section id="extra-event-section" className="card section-card glass-card">
-          <h2>🎫 Event</h2>
+          <PageHeader
+            title="Information"
+            description="Upcoming events and festivals with booking links and pricing context."
+          >
+            <SubTabBar items={informationSubTabItems} active={informationSubTab} />
+          </PageHeader>
           <p>
             Latest planned exhibitions/performances for {placesCity} ({countryCode}) · source: {eventsSource}
           </p>
@@ -3375,6 +3586,8 @@ export function TripMasterApp() {
           </div>
         </section>
       ) : null}
-    </div>
+        </>
+      }
+    />
   );
 }
