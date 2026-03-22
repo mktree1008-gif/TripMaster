@@ -118,6 +118,26 @@ async function filesToDataUrls(files: FileList | null) {
   return Promise.all(tasks);
 }
 
+function buildTagCandidates(text: string) {
+  const words = text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter((word) => word.length >= 3)
+    .slice(0, 10);
+  return Array.from(new Set(words)).map((word) => `#${word}`);
+}
+
+function parseTagInput(text: string) {
+  const tokens = text
+    .split(/[,\s]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+  const normalized = tokens.map((token) => (token.startsWith('#') ? token : `#${token}`));
+  return Array.from(new Set(normalized));
+}
+
 function buildLocalPlan(input: {
   countryCode: string;
   city: string;
@@ -236,6 +256,43 @@ function buildLocalPlan(input: {
 const demoTripsStorageKey = 'tripmaster-demo-trips-v1';
 const demoRecordsStoragePrefix = 'tripmaster-demo-records-v1:';
 const demoDiariesStoragePrefix = 'tripmaster-demo-diaries-v1:';
+const tripstargramDraftStoragePrefix = 'tripmaster-tripstargram-drafts-v1:';
+const tripstargramMetaStoragePrefix = 'tripmaster-tripstargram-meta-v1:';
+const tripstargramReactionStoragePrefix = 'tripmaster-tripstargram-reactions-v1:';
+
+const tripstargramReactionOptions = ['❤️', '✈️', '😍', '📍', '🍜', '🌅', '😂'] as const;
+const tripstargramVibePresets = ['Soft memory', 'Bright city', 'Sunset journal', 'Cozy food moment', 'Adventure day', 'Quiet reflection'];
+const tripstargramEffectPresets = ['Warm film', 'Soft fade', 'Vivid daylight', 'Night glow', 'Clean natural'];
+
+type TripstargramReactionEmoji = (typeof tripstargramReactionOptions)[number];
+
+interface TripstargramDraft {
+  id: string;
+  mode: 'auto' | 'manual';
+  diaryId: string;
+  caption: string;
+  tags: string[];
+  emojis: string[];
+  vibe: string;
+  effect: string;
+  collaborators: string[];
+  visibility: 'tripmates' | 'private' | 'public';
+  createdAt: string;
+}
+
+interface TripstargramPostMeta {
+  collaborators: string[];
+  vibe: string;
+  effect: string;
+  emojis: string[];
+  visibility: 'tripmates' | 'private' | 'public';
+  coEditEnabled: boolean;
+}
+
+interface TripstargramReactionState {
+  counts: Partial<Record<TripstargramReactionEmoji, number>>;
+  selectedEmoji: TripstargramReactionEmoji | null;
+}
 
 function readLocalJson<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -261,21 +318,23 @@ interface AppShellProps {
   topHeroHeader: ReactNode;
   tripWorkspaceSection: ReactNode;
   primaryTabBar: ReactNode;
+  mobileExperienceStrip?: ReactNode;
   activePage: ReactNode;
   statusToast?: ReactNode;
 }
 
-function AppShell({ topHeroHeader, tripWorkspaceSection, primaryTabBar, activePage, statusToast }: AppShellProps) {
+function AppShell({ topHeroHeader, tripWorkspaceSection, primaryTabBar, mobileExperienceStrip, activePage, statusToast }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#eaf4ff_0%,#f8fbff_45%,#ffffff_100%)] text-slate-900">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#ecf4ff_0%,#f7fbff_38%,#ffffff_100%)] text-slate-900">
       <BackgroundLayer />
       {statusToast}
       <div className="relative z-10">
         {topHeroHeader}
-        <main className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
-          <div className="-mt-8 space-y-6">
+        <main className="tripmaster-main-shell mx-auto max-w-[1240px] px-4 pb-16 sm:px-6 lg:px-8">
+          <div className="tripmaster-content-stack">
             {tripWorkspaceSection}
             {primaryTabBar}
+            {mobileExperienceStrip}
             {activePage}
           </div>
         </main>
@@ -287,8 +346,13 @@ function AppShell({ topHeroHeader, tripWorkspaceSection, primaryTabBar, activePa
 function BackgroundLayer() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.18),transparent_30%),radial-gradient(circle_at_top_right,rgba(20,184,166,0.14),transparent_28%)]" />
-      <div className="absolute inset-x-0 top-0 h-72 bg-[linear-gradient(180deg,rgba(29,78,216,0.10),transparent)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_8%_9%,rgba(120,219,239,0.34),transparent_26%),radial-gradient(circle_at_82%_11%,rgba(122,188,255,0.28),transparent_30%),radial-gradient(circle_at_55%_88%,rgba(155,228,236,0.21),transparent_34%)]" />
+      <div className="absolute inset-x-0 top-0 h-[520px] bg-[linear-gradient(180deg,rgba(78,180,236,0.21),rgba(78,180,236,0.02)_80%,transparent)]" />
+      <div className="absolute -left-20 top-14 h-72 w-72 rounded-[44%] bg-cyan-200/26 blur-2xl" />
+      <div className="absolute right-[-60px] top-44 h-80 w-80 rounded-[46%] bg-blue-200/30 blur-2xl" />
+      <div className="absolute inset-0 opacity-35 [background-image:radial-gradient(rgba(45,117,170,0.22)_0.6px,transparent_0.6px)] [background-size:22px_22px]" />
+      <div className="absolute inset-x-[8%] top-[24%] h-px bg-[linear-gradient(90deg,transparent,rgba(77,158,207,0.35),transparent)]" />
+      <div className="absolute inset-x-[12%] top-[58%] h-px bg-[linear-gradient(90deg,transparent,rgba(104,179,215,0.24),transparent)]" />
     </div>
   );
 }
@@ -310,8 +374,10 @@ function HeaderIconButton({
       aria-label={label}
       onClick={onClick}
       className={cn(
-        'inline-flex h-11 w-11 items-center justify-center rounded-2xl text-lg backdrop-blur transition',
-        active ? 'bg-white/28 text-white' : 'bg-white/14 text-white hover:bg-white/22'
+        'inline-flex h-10 w-10 items-center justify-center rounded-2xl border text-base backdrop-blur-md transition-all duration-200',
+        active
+          ? 'border-sky-300/70 bg-sky-50 text-[#0d3d72] shadow-[0_10px_20px_rgba(44,110,169,0.24)]'
+          : 'border-sky-200/80 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-sky-300 hover:text-[#0d3f74]'
       )}
     >
       <span aria-hidden>{icon}</span>
@@ -324,7 +390,7 @@ function PrimaryButton({ children, type = 'button', onClick }: { children: React
     <button
       type={type}
       onClick={onClick}
-      className="inline-flex items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#1d4ed8,#14b8a6)] px-5 py-3 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(29,78,216,0.25)] transition hover:-translate-y-0.5"
+      className="inline-flex items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#1f4ed8,#0ea5a7)] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(29,78,216,0.26)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(15,67,145,0.28)]"
     >
       {children}
     </button>
@@ -335,7 +401,7 @@ function GlassCard({ className = '', children }: { className?: string; children:
   return (
     <section
       className={cn(
-        'rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_10px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl',
+        'glass-card-base rounded-[30px] border border-white/70 bg-white/78 p-6 shadow-[0_14px_40px_rgba(11,33,66,0.11)] backdrop-blur-xl',
         className
       )}
     >
@@ -346,12 +412,12 @@ function GlassCard({ className = '', children }: { className?: string; children:
 
 function TripWorkspaceSection({ children }: { children: ReactNode }) {
   return (
-    <section>
-      <div className="mb-3">
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Trip Workspace</p>
-        <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Organize the trip before takeoff</h2>
+    <section className="trip-workspace-block">
+      <div className="trip-workspace-head mb-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Trip Workspace</p>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-[2rem]">Command center before departure</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Keep current trip context, create/join flow, and collaboration permissions in one balanced workspace.
+          Keep current trip context, create and join flows, and collaboration controls in one structured premium workspace.
         </p>
       </div>
       {children}
@@ -360,18 +426,22 @@ function TripWorkspaceSection({ children }: { children: ReactNode }) {
 }
 
 function SectionEyebrow({ children }: { children: ReactNode }) {
-  return <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{children}</p>;
+  return <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700/70">{children}</p>;
 }
 
 function Chip({ children }: { children: ReactNode }) {
-  return <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">{children}</span>;
+  return (
+    <span className="rounded-full border border-sky-200/80 bg-sky-50/80 px-3 py-1 text-xs font-semibold text-sky-900/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+      {children}
+    </span>
+  );
 }
 
 function MiniInfo({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+    <div className="flex items-center justify-between rounded-2xl border border-sky-100 bg-white/90 px-4 py-3 shadow-[0_8px_18px_rgba(18,78,129,0.08)]">
       <span className="text-sm text-slate-500">{label}</span>
-      <span className="text-sm font-semibold text-slate-800">{value}</span>
+      <span className="text-sm font-semibold text-slate-900">{value}</span>
     </div>
   );
 }
@@ -386,8 +456,9 @@ function PrimaryTabBar({
   onSelect: (tab: TabKey) => void;
 }) {
   return (
-    <div className="rounded-[28px] border border-white/60 bg-white/75 p-2 shadow-[0_10px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+    <div className="primary-tab-shell relative overflow-hidden rounded-[30px] border border-[#a9c9e7]/60 bg-[linear-gradient(140deg,rgba(9,48,104,0.94),rgba(19,96,158,0.9))] p-2 shadow-[0_18px_38px_rgba(4,32,78,0.3)] backdrop-blur-xl">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_84%_14%,rgba(126,200,255,0.18),transparent_30%),radial-gradient(circle_at_8%_86%,rgba(118,219,210,0.14),transparent_34%)]" />
+      <div className="primary-tab-grid relative grid grid-cols-2 gap-2 md:grid-cols-4">
         {tabs.map((tab) => {
           const isActive = tab.key === active;
           return (
@@ -396,14 +467,22 @@ function PrimaryTabBar({
               type="button"
               onClick={() => onSelect(tab.key)}
               className={cn(
-                'flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                'primary-tab-btn group flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold tracking-[0.01em] transition-all duration-200',
                 isActive
-                  ? 'bg-[linear-gradient(135deg,#1d4ed8,#14b8a6)] text-white shadow-[0_8px_24px_rgba(29,78,216,0.25)]'
-                  : 'text-slate-600 hover:bg-slate-50'
+                  ? 'bg-white text-[#0f4478] shadow-[0_12px_26px_rgba(9,32,71,0.36)]'
+                  : 'bg-white/10 text-sky-50 hover:-translate-y-0.5 hover:bg-white/18'
               )}
             >
-              <span aria-hidden>{tab.icon}</span>
-              <span>{tab.label}</span>
+              <span
+                aria-hidden
+                className={cn(
+                  'primary-tab-icon inline-flex h-8 w-8 items-center justify-center rounded-xl border text-[1.02rem] transition',
+                  isActive ? 'border-sky-200/80 bg-sky-50/80' : 'border-white/35 bg-white/20 group-hover:bg-white/28'
+                )}
+              >
+                {tab.icon}
+              </span>
+              <span className="primary-tab-label">{tab.label}</span>
             </button>
           );
         })}
@@ -414,11 +493,12 @@ function PrimaryTabBar({
 
 function PageHeader({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
   return (
-    <div className="mb-5">
+    <div className="page-header-block mb-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
-          <p className="mt-1 text-sm text-slate-500">{description}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700/60">Workspace</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 sm:text-[2rem]">{title}</h2>
+          <p className="mt-1 max-w-3xl text-sm text-slate-600">{description}</p>
         </div>
       </div>
       {children}
@@ -434,7 +514,7 @@ function SubTabBar({
   active: string;
 }) {
   return (
-    <div className="mt-4 flex flex-wrap gap-2">
+    <div className="subtab-shell mt-4 flex flex-wrap items-center gap-2 rounded-2xl p-2">
       {items.map((item) => {
         const isActive = item.key === active;
         return (
@@ -443,8 +523,10 @@ function SubTabBar({
             type="button"
             onClick={item.onClick}
             className={cn(
-              'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition',
-              isActive ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              'subtab-item inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200',
+              isActive
+                ? 'active border border-transparent text-white shadow-[0_8px_20px_rgba(19,88,168,0.25)]'
+                : 'text-slate-600'
             )}
           >
             {item.icon ? <span aria-hidden>{item.icon}</span> : null}
@@ -453,6 +535,111 @@ function SubTabBar({
         );
       })}
     </div>
+  );
+}
+
+const mobileInspirationCards: Array<{ key: TabKey; title: string; subtitle: string; imageUrl: string; badge: string }> = [
+  {
+    key: 'flight',
+    title: 'Flight Mobile',
+    subtitle: 'Boarding pass and departure timeline',
+    imageUrl:
+      'https://cdn.dribbble.com/userupload/46915034/file/98baa819e35f6a3f911d0e7b1c48b741.png?crop=195x0-2813x1964&format=webp&resize=1200x900&vertical=center',
+    badge: '✈️',
+  },
+  {
+    key: 'hotel',
+    title: 'Hotel Mobile',
+    subtitle: 'Reservation card and stay details',
+    imageUrl:
+      'https://cdn.dribbble.com/userupload/42973342/file/original-dbc11cdaa4615b18c15e2be25007e3ae.png?format=webp&resize=1200x900&vertical=center',
+    badge: '🏨',
+  },
+  {
+    key: 'places',
+    title: 'Plan Mobile',
+    subtitle: 'Map-style cards for places and routes',
+    imageUrl:
+      'https://cdn.dribbble.com/userupload/46906420/file/b54c5f45d656929e83aa8a65ebb4ac51.jpg?format=webp&resize=1200x900&vertical=center',
+    badge: '🧭',
+  },
+  {
+    key: 'diary',
+    title: 'Diary Mobile',
+    subtitle: 'Warm journal card with media and voice',
+    imageUrl:
+      'https://images.squarespace-cdn.com/content/v1/603fd2e6b89a792feb000f9c/ab985b3c-d3da-474c-b3ca-332671b5e975/weekly%2Bmemory%2Bkeeper%2Bdigital%2Bjournal.jpg',
+    badge: '📔',
+  },
+];
+
+function MobileExperienceStrip({
+  activeTab,
+  onSelect,
+}: {
+  activeTab: TabKey;
+  onSelect: (tab: TabKey) => void;
+}) {
+  return (
+    <section className="mobile-experience-strip mobile-reference-themed rounded-[30px] border border-white/70 bg-white/78 p-4 shadow-[0_16px_38px_rgba(14,35,68,0.1)] backdrop-blur-xl">
+      <div className="mobile-experience-head">
+        <div>
+          <p className="mobile-experience-kicker">Mobile-Led Design Direction</p>
+          <h3>Mobile flow inspired by Flight, Hotel, Plan, and Diary apps</h3>
+        </div>
+        <p className="mobile-experience-note">Tap a card to jump directly into that tab experience.</p>
+      </div>
+      <div className="mobile-experience-grid">
+        {mobileInspirationCards.map((card) => {
+          const isActive = activeTab === card.key;
+          return (
+            <button
+              key={card.key}
+              type="button"
+              onClick={() => onSelect(card.key)}
+              className={cn('mobile-experience-card', isActive && 'active')}
+            >
+              <div className="mobile-experience-frame">
+                <img src={card.imageUrl} alt={card.title} />
+                <div className="mobile-experience-overlay">
+                  <span>{card.badge}</span>
+                  <strong>{card.title}</strong>
+                  <p>{card.subtitle}</p>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function SectionMobileHero({
+  title,
+  subtitle,
+  imageUrl,
+  chips,
+}: {
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  chips: string[];
+}) {
+  return (
+    <article className="section-mobile-hero">
+      <img src={imageUrl} alt={title} />
+      <div className="section-mobile-hero-overlay">
+        <p className="section-mobile-hero-kicker">Mobile UX Pattern</p>
+        <h3>{title}</h3>
+        <p>{subtitle}</p>
+        <div className="section-mobile-chip-row">
+          {chips.map((chip) => (
+            <span key={chip}>{chip}</span>
+          ))}
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -488,48 +675,29 @@ function TopHeroHeader({
   onBrandClick: () => void;
 }) {
   return (
-    <header className="relative overflow-hidden rounded-b-[32px] bg-[linear-gradient(135deg,#0f3b8f_0%,#0f766e_100%)] text-white shadow-[0_20px_60px_rgba(15,23,42,0.25)]">
-      <div className="absolute inset-0 bg-black/20" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(255,255,255,0.18),transparent_22%)]" />
-      <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl">
-            <button type="button" onClick={onBrandClick} className="text-left">
-              <p className="text-xs uppercase tracking-[0.24em] text-white/70">TripMaster</p>
-              <h1 className="mt-2 text-3xl font-bold leading-tight sm:text-5xl">Plan every trip with clarity and excitement</h1>
+    <header className="hero-airlink-shell">
+      <div className="hero-airlink-overlay" />
+      <div className="hero-airlink-wave" />
+      <div className="hero-airlink-wave second" />
+      <div className="hero-airlink-inner">
+        <div className="hero-airlink-card">
+          <div className="hero-airlink-topbar">
+            <button type="button" onClick={onBrandClick} className="hero-airlink-brand">
+              ✈ TripMaster
             </button>
-            <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-base">
-              Flights, stays, planning, and local info in one premium travel workspace.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <span className="rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">
-                Current trip: {selectedTripTitle || 'None selected'}
-              </span>
-              <span className="rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">
-                {autoTranslate ? 'Auto-translate on' : 'Auto-translate off'}
-              </span>
-              <button
-                type="button"
-                onClick={onAuthToggle}
-                className="rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur transition hover:bg-white/25"
-              >
-                {nickname ? `Signed in: ${nickname}` : isAuthOpen ? 'Close account panel' : 'Open account panel'}
-              </button>
-            </div>
-          </div>
-
-          <div className="w-full max-w-md space-y-3">
-            <div className="flex items-center justify-end gap-2">
-              <label className="flex h-11 items-center gap-2 rounded-2xl bg-white/14 px-3 text-sm text-white backdrop-blur transition hover:bg-white/22">
+            <nav className="hero-airlink-links" aria-label="Hero quick links">
+              <span>Home</span>
+              <span>Flight</span>
+              <span>Hotel</span>
+              <span>Plan</span>
+              <span>Information</span>
+            </nav>
+            <div className="hero-airlink-utils">
+              <label className="hero-airlink-language">
                 <span aria-hidden>🌐</span>
-                <select
-                  value={language}
-                  onChange={(event) => onLanguageChange(event.target.value as LanguageCode)}
-                  aria-label="Language"
-                  className="min-w-0 bg-transparent text-sm text-white outline-none"
-                >
+                <select value={language} onChange={(event) => onLanguageChange(event.target.value as LanguageCode)} aria-label="Language">
                   {languageOrder.map((item) => (
-                    <option key={item.code} value={item.code} className="text-slate-900">
+                    <option key={item.code} value={item.code}>
                       {item.label}
                     </option>
                   ))}
@@ -537,17 +705,77 @@ function TopHeroHeader({
               </label>
               <HeaderIconButton icon="👤" label="Profile" active={profileActive} onClick={onProfileClick} />
               <HeaderIconButton icon="⚙️" label="Settings" active={settingsActive} onClick={onSettingsClick} />
+              <button type="button" className="hero-airlink-auth" onClick={onAuthToggle}>
+                {isAuthOpen ? 'Close' : 'Account'}
+              </button>
             </div>
-            <label className="flex items-center gap-2 rounded-2xl bg-white/14 px-4 py-3 text-sm text-white/90 backdrop-blur">
-              <input type="checkbox" checked={autoTranslate} onChange={(event) => onAutoTranslateChange(event.target.checked)} />
-              Auto-translate shared content
-            </label>
-            {!backendConfigured ? (
-              <p className="rounded-xl border border-rose-200/40 bg-rose-900/35 px-3 py-2 text-sm text-rose-50">
-                Backend is not configured yet. Set real Supabase environment variables to enable save/login.
-              </p>
-            ) : null}
           </div>
+
+          <div className="hero-airlink-main">
+            <div className="hero-airlink-visual">
+              <img
+                src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1600&q=80"
+                alt="Airplane in sky"
+              />
+              <div className="hero-airlink-chip-row">
+                <span>{selectedTripTitle || 'No trip selected'}</span>
+                <span>{nickname ? `@${nickname}` : 'Guest mode'}</span>
+              </div>
+            </div>
+            <div className="hero-airlink-copy">
+              <p className="hero-airlink-kicker">Aero Dashboard</p>
+              <h1>Your Ticket to Explore the World</h1>
+              <p>
+                Premium planning with flight, hotel, planning, and local insight workflows in one destination-focused interface.
+              </p>
+              <div className="hero-airlink-status">
+                <article>
+                  <small>Trip</small>
+                  <strong>{selectedTripTitle || 'Select workspace'}</strong>
+                </article>
+                <article>
+                  <small>Translate</small>
+                  <strong>{autoTranslate ? 'Enabled' : 'Disabled'}</strong>
+                </article>
+                <article>
+                  <small>Profile</small>
+                  <strong>{nickname ?? 'Not signed in'}</strong>
+                </article>
+              </div>
+            </div>
+          </div>
+
+          <div className="hero-airlink-searchdock">
+            <div className="hero-airlink-field">
+              <span>From</span>
+              <strong>Choose departure</strong>
+            </div>
+            <div className="hero-airlink-field">
+              <span>To</span>
+              <strong>Destination city</strong>
+            </div>
+            <div className="hero-airlink-field">
+              <span>Departure</span>
+              <strong>Pick a date</strong>
+            </div>
+            <div className="hero-airlink-field">
+              <span>Return</span>
+              <strong>Pick a date</strong>
+            </div>
+            <button type="button" className="hero-airlink-searchbtn" onClick={onBrandClick}>
+              Explore
+            </button>
+            <label className="hero-airlink-toggle">
+              <input type="checkbox" checked={autoTranslate} onChange={(event) => onAutoTranslateChange(event.target.checked)} />
+              Auto-translate
+            </label>
+          </div>
+
+          {!backendConfigured ? (
+            <p className="hero-airlink-warning">
+              Backend is not configured yet. Set real Supabase environment variables to enable save/login.
+            </p>
+          ) : null}
         </div>
       </div>
     </header>
@@ -686,6 +914,25 @@ export function TripMasterApp() {
   const [tripstargramCaption, setTripstargramCaption] = useState('');
   const [tripstargramFiles, setTripstargramFiles] = useState<FileList | null>(null);
   const [translatedTripstargramCaption, setTranslatedTripstargramCaption] = useState<Record<string, string>>({});
+  const [tripstargramVibe, setTripstargramVibe] = useState(tripstargramVibePresets[0]);
+  const [tripstargramEffect, setTripstargramEffect] = useState(tripstargramEffectPresets[0]);
+  const [tripstargramSelectedEmojis, setTripstargramSelectedEmojis] = useState<string[]>(['🌅', '✈️']);
+  const [tripstargramSuggestedTags, setTripstargramSuggestedTags] = useState<string[]>([]);
+  const [tripstargramCustomTags, setTripstargramCustomTags] = useState('');
+  const [tripstargramCoEditorInput, setTripstargramCoEditorInput] = useState('');
+  const [tripstargramCoEditors, setTripstargramCoEditors] = useState<string[]>([]);
+  const [tripstargramAllowCoEdit, setTripstargramAllowCoEdit] = useState(true);
+  const [tripstargramVisibility, setTripstargramVisibility] = useState<'tripmates' | 'private' | 'public'>('tripmates');
+  const [tripstargramDraftGenerated, setTripstargramDraftGenerated] = useState(false);
+  const [tripstargramDrafts, setTripstargramDrafts] = useState<TripstargramDraft[]>([]);
+  const [tripstargramPostMeta, setTripstargramPostMeta] = useState<Record<string, TripstargramPostMeta>>({});
+  const [tripstargramReactionMap, setTripstargramReactionMap] = useState<Record<string, TripstargramReactionState>>({});
+  const [tripstargramReactionTrayPostId, setTripstargramReactionTrayPostId] = useState<string | null>(null);
+  const [tripstargramPreviewUrl, setTripstargramPreviewUrl] = useState<string | null>(null);
+  const [tripstargramPreviewIsVideo, setTripstargramPreviewIsVideo] = useState(false);
+  const [tripstargramFeedFilter, setTripstargramFeedFilter] = useState<'latest' | 'from-diary' | 'shared'>('latest');
+  const tripstargramLongPressTimerRef = useRef<number | null>(null);
+  const tripstargramLongPressTriggeredRef = useRef(false);
 
   const [musicStyle, setMusicStyle] = useState<
     'recommended' | 'cinematic-pop' | 'indie-folk' | 'lofi' | 'dance-pop' | 'orchestral' | 'k-pop-ballad'
@@ -902,6 +1149,63 @@ export function TripMasterApp() {
       setTripstargramDiaryId(diaries[0].id);
     }
   }, [diaries, tripstargramMode, tripstargramDiaryId]);
+
+  useEffect(() => {
+    if (!selectedTripId) {
+      setTripstargramDrafts([]);
+      setTripstargramPostMeta({});
+      setTripstargramReactionMap({});
+      setTripstargramReactionTrayPostId(null);
+      return;
+    }
+    setTripstargramDrafts(readLocalJson<TripstargramDraft[]>(`${tripstargramDraftStoragePrefix}${selectedTripId}`, []));
+    setTripstargramPostMeta(readLocalJson<Record<string, TripstargramPostMeta>>(`${tripstargramMetaStoragePrefix}${selectedTripId}`, {}));
+    setTripstargramReactionMap(
+      readLocalJson<Record<string, TripstargramReactionState>>(`${tripstargramReactionStoragePrefix}${selectedTripId}`, {})
+    );
+  }, [selectedTripId]);
+
+  useEffect(() => {
+    if (!selectedTripId) return;
+    writeLocalJson(`${tripstargramDraftStoragePrefix}${selectedTripId}`, tripstargramDrafts);
+  }, [selectedTripId, tripstargramDrafts]);
+
+  useEffect(() => {
+    if (!selectedTripId) return;
+    writeLocalJson(`${tripstargramMetaStoragePrefix}${selectedTripId}`, tripstargramPostMeta);
+  }, [selectedTripId, tripstargramPostMeta]);
+
+  useEffect(() => {
+    if (!selectedTripId) return;
+    writeLocalJson(`${tripstargramReactionStoragePrefix}${selectedTripId}`, tripstargramReactionMap);
+  }, [selectedTripId, tripstargramReactionMap]);
+
+  useEffect(() => {
+    if (!tripstargramFiles?.length) {
+      setTripstargramPreviewUrl(null);
+      setTripstargramPreviewIsVideo(false);
+      return;
+    }
+    const firstFile = tripstargramFiles.item(0);
+    if (!firstFile) {
+      setTripstargramPreviewUrl(null);
+      setTripstargramPreviewIsVideo(false);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(firstFile);
+    setTripstargramPreviewUrl(objectUrl);
+    setTripstargramPreviewIsVideo(firstFile.type.startsWith('video/'));
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [tripstargramFiles]);
+
+  useEffect(
+    () => () => {
+      if (tripstargramLongPressTimerRef.current) {
+        window.clearTimeout(tripstargramLongPressTimerRef.current);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     loadPlaces();
@@ -1442,6 +1746,169 @@ export function TripMasterApp() {
     }
   }
 
+  function getSelectedTripstargramDiary() {
+    if (!diaries.length) return null;
+    return diaries.find((entry) => entry.id === tripstargramDiaryId) ?? diaries[0];
+  }
+
+  function toggleTripstargramEmoji(emoji: string) {
+    setTripstargramSelectedEmojis((prev) => {
+      if (prev.includes(emoji)) {
+        const next = prev.filter((item) => item !== emoji);
+        return next.length ? next : [emoji];
+      }
+      return [...prev, emoji];
+    });
+  }
+
+  function toggleTripstargramSuggestedTag(tag: string) {
+    setTripstargramSuggestedTags((prev) => (prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]));
+  }
+
+  function addTripstargramCoEditor() {
+    const normalized = tripstargramCoEditorInput.trim().replace(/^@/, '');
+    if (!normalized) return;
+    setTripstargramCoEditors((prev) => (prev.includes(normalized) ? prev : [...prev, normalized]));
+    setTripstargramCoEditorInput('');
+  }
+
+  function removeTripstargramCoEditor(name: string) {
+    setTripstargramCoEditors((prev) => prev.filter((item) => item !== name));
+  }
+
+  function buildTripstargramDiaryDraft(diary: DiaryEntry) {
+    const cleanContent = diary.content.replace(/\s+/g, ' ').trim();
+    const excerpt = cleanContent.length > 220 ? `${cleanContent.slice(0, 217)}...` : cleanContent;
+    const emojiPrefix = tripstargramSelectedEmojis.join(' ');
+    const caption = [
+      `${emojiPrefix} ${diary.title} • ${diary.place}`.trim(),
+      excerpt,
+      `Mood preset: ${tripstargramVibe}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const tags = buildTagCandidates(`${diary.title} ${diary.place} ${diary.content} ${tripstargramVibe}`).slice(0, 7);
+    return { caption, tags };
+  }
+
+  function generateTripstargramDraftFromDiary() {
+    const diary = getSelectedTripstargramDiary();
+    if (!diary) {
+      showStatus('Create a diary first to use AI draft mode.');
+      return;
+    }
+    const draft = buildTripstargramDiaryDraft(diary);
+    setTripstargramMode('auto');
+    setTripstargramDiaryId(diary.id);
+    setTripstargramCaption(draft.caption);
+    setTripstargramSuggestedTags(draft.tags);
+    setTripstargramCustomTags('');
+    setTripstargramDraftGenerated(true);
+    showStatus('AI-style draft generated from your diary. Review and edit before publishing.', 'success');
+  }
+
+  function switchTripstargramToManual() {
+    setTripstargramMode('manual');
+    setTripstargramDraftGenerated(false);
+    setTripstargramDiaryId('');
+    if (!tripstargramCaption.trim()) {
+      setTripstargramSuggestedTags([]);
+    }
+  }
+
+  function saveTripstargramDraftLocally() {
+    if (!tripstargramCaption.trim()) {
+      showStatus('Add a caption first, then save a draft.');
+      return;
+    }
+    const draft: TripstargramDraft = {
+      id: `tripstargram-draft-${Date.now()}`,
+      mode: tripstargramMode,
+      diaryId: tripstargramDiaryId,
+      caption: tripstargramCaption.trim(),
+      tags: Array.from(new Set([...tripstargramSuggestedTags, ...parseTagInput(tripstargramCustomTags)])).slice(0, 10),
+      emojis: tripstargramSelectedEmojis,
+      vibe: tripstargramVibe,
+      effect: tripstargramEffect,
+      collaborators: tripstargramCoEditors,
+      visibility: tripstargramVisibility,
+      createdAt: new Date().toISOString(),
+    };
+    setTripstargramDrafts((prev) => [draft, ...prev].slice(0, 8));
+    showStatus('Tripstargram draft saved locally.', 'success');
+  }
+
+  function applySavedTripstargramDraft(draft: TripstargramDraft) {
+    setTripstargramMode(draft.mode);
+    setTripstargramDiaryId(draft.diaryId);
+    setTripstargramCaption(draft.caption);
+    setTripstargramSuggestedTags(draft.tags);
+    setTripstargramCustomTags('');
+    setTripstargramSelectedEmojis(draft.emojis.length ? draft.emojis : ['🌅', '✈️']);
+    setTripstargramVibe(draft.vibe);
+    setTripstargramEffect(draft.effect);
+    setTripstargramCoEditors(draft.collaborators);
+    setTripstargramVisibility(draft.visibility);
+    setTripstargramDraftGenerated(draft.mode === 'auto');
+    showStatus('Saved draft loaded into the editor.');
+  }
+
+  function removeSavedTripstargramDraft(draftId: string) {
+    setTripstargramDrafts((prev) => prev.filter((draft) => draft.id !== draftId));
+  }
+
+  function applyTripstargramReaction(postId: string, emoji: TripstargramReactionEmoji) {
+    setTripstargramReactionMap((prev) => {
+      const current = prev[postId] ?? { counts: {}, selectedEmoji: null };
+      if (current.selectedEmoji === emoji) {
+        return prev;
+      }
+      const counts: Partial<Record<TripstargramReactionEmoji, number>> = { ...current.counts };
+      if (current.selectedEmoji) {
+        const nextValue = Math.max((counts[current.selectedEmoji] ?? 1) - 1, 0);
+        if (nextValue === 0) {
+          delete counts[current.selectedEmoji];
+        } else {
+          counts[current.selectedEmoji] = nextValue;
+        }
+      }
+      counts[emoji] = (counts[emoji] ?? 0) + 1;
+      return {
+        ...prev,
+        [postId]: {
+          counts,
+          selectedEmoji: emoji,
+        },
+      };
+    });
+    setTripstargramReactionTrayPostId(null);
+  }
+
+  function cancelTripstargramLongPress() {
+    if (tripstargramLongPressTimerRef.current) {
+      window.clearTimeout(tripstargramLongPressTimerRef.current);
+      tripstargramLongPressTimerRef.current = null;
+    }
+  }
+
+  function onTripstargramReactionPointerDown(postId: string) {
+    cancelTripstargramLongPress();
+    tripstargramLongPressTriggeredRef.current = false;
+    tripstargramLongPressTimerRef.current = window.setTimeout(() => {
+      tripstargramLongPressTriggeredRef.current = true;
+      setTripstargramReactionTrayPostId(postId);
+    }, 450);
+  }
+
+  function onTripstargramReactionPointerUp(postId: string) {
+    cancelTripstargramLongPress();
+    if (!tripstargramLongPressTriggeredRef.current) {
+      applyTripstargramReaction(postId, '❤️');
+    }
+    tripstargramLongPressTriggeredRef.current = false;
+  }
+
   async function loadTripstargram() {
     if (!selectedTripId) {
       setTripstargramPosts([]);
@@ -1466,6 +1933,12 @@ export function TripMasterApp() {
       return;
     }
 
+    const emojiLine = tripstargramSelectedEmojis.join(' ').trim();
+    const activeTags = Array.from(new Set([...tripstargramSuggestedTags, ...parseTagInput(tripstargramCustomTags)])).slice(0, 10);
+    const tagLine = activeTags.join(' ').trim();
+    const userCaption = tripstargramCaption.trim();
+    const shouldDecorateCaption = tripstargramMode === 'manual' || tripstargramDraftGenerated || Boolean(userCaption) || Boolean(tagLine);
+    const composedCaption = shouldDecorateCaption ? [emojiLine, userCaption, tagLine].filter(Boolean).join('\n') : userCaption;
     const mediaUrls = await filesToDataUrls(tripstargramFiles);
     const res = await apiFetch<TripstargramPost>(supabase, '/api/tripstargram', {
       method: 'POST',
@@ -1473,17 +1946,32 @@ export function TripMasterApp() {
         tripId: selectedTripId,
         mode: tripstargramMode,
         diaryId: tripstargramMode === 'auto' ? tripstargramDiaryId : undefined,
-        caption: tripstargramCaption.trim() || undefined,
+        caption: composedCaption || undefined,
         mediaUrl: mediaUrls[0] ?? null,
       }),
     });
 
-    if (res.ok) {
+    if (res.ok && res.data) {
+      setTripstargramPostMeta((prev) => ({
+        ...prev,
+        [res.data.id]: {
+          collaborators: tripstargramCoEditors,
+          vibe: tripstargramVibe,
+          effect: tripstargramEffect,
+          emojis: tripstargramSelectedEmojis,
+          visibility: tripstargramVisibility,
+          coEditEnabled: tripstargramAllowCoEdit,
+        },
+      }));
       setTripstargramCaption('');
       setTripstargramFiles(null);
-      if (tripstargramMode === 'manual') {
-        setTripstargramDiaryId('');
-      }
+      setTripstargramPreviewUrl(null);
+      setTripstargramPreviewIsVideo(false);
+      setTripstargramCustomTags('');
+      setTripstargramSuggestedTags([]);
+      setTripstargramCoEditors([]);
+      setTripstargramDraftGenerated(false);
+      setTripstargramReactionTrayPostId(null);
       await loadTripstargram();
       showStatus('Tripstargram post created successfully.', 'success');
     } else {
@@ -1911,11 +2399,11 @@ export function TripMasterApp() {
 
   function updatePackingList(updater: (items: PackingItem[]) => PackingItem[]) {
     if (!activePackingKey) {
-      showStatus('Trip을 먼저 선택하면 여행별 준비물 체크리스트를 사용할 수 있어요.');
+      showStatus('Select a trip first to manage the per-trip packing checklist.');
       return;
     }
     if (!canEditPacking) {
-      showStatus('Editor only: invited member edit mode가 OFF 상태입니다.');
+      showStatus('Editor only: invited member edit mode is currently OFF.');
       return;
     }
     setPackingByTrip((prev) => ({
@@ -1975,7 +2463,7 @@ export function TripMasterApp() {
 
   function syncTemplateToCurrentTrip() {
     if (!activePackingKey) {
-      showStatus('Trip을 먼저 선택해 주세요.');
+      showStatus('Please select a trip first.');
       return;
     }
     const guide = travelPrepGuides[countryCode] ?? travelPrepGuides.DEFAULT;
@@ -2034,6 +2522,20 @@ export function TripMasterApp() {
     { key: 'event', label: 'Events / Festival', icon: '🎫', onClick: () => setInformationSubTab('event') },
     { key: 'tips', label: 'Tips', icon: '💬', onClick: () => setInformationSubTab('tips') },
   ];
+  const selectedTripstargramDiary = getSelectedTripstargramDiary();
+  const tripstargramEditorTags = Array.from(new Set([...tripstargramSuggestedTags, ...parseTagInput(tripstargramCustomTags)])).slice(0, 10);
+  const tripstargramPreviewCaption = [tripstargramSelectedEmojis.join(' '), tripstargramCaption.trim(), tripstargramEditorTags.join(' ')]
+    .filter(Boolean)
+    .join('\n');
+  const filteredTripstargramPosts = tripstargramPosts.filter((post) => {
+    if (tripstargramFeedFilter === 'from-diary') {
+      return Boolean(post.diaryId);
+    }
+    if (tripstargramFeedFilter === 'shared') {
+      return Boolean(tripstargramPostMeta[post.id]?.collaborators.length);
+    }
+    return true;
+  });
 
   return (
     <AppShell
@@ -2073,9 +2575,10 @@ export function TripMasterApp() {
       tripWorkspaceSection={
         <TripWorkspaceSection>
           <div className="grid gap-4 lg:grid-cols-12">
-            <GlassCard className="lg:col-span-4">
+            <GlassCard className="lg:col-span-4 workspace-current-card">
               <SectionEyebrow>Current Trip</SectionEyebrow>
-              <h2 className="mt-2 text-xl font-semibold">{selectedTripTitle || 'Choose your trip workspace'}</h2>
+              <h2 className="mt-2 text-xl font-semibold text-slate-900">{selectedTripTitle || 'Choose your trip workspace'}</h2>
+              <p className="mt-1 text-sm text-slate-500">Lock your trip context first, then keep all tools aligned to that single source.</p>
               <label className="mt-4 block text-sm text-slate-600">
                 Select trip
                 <select className="mt-2 w-full" value={selectedTripId} onChange={(event) => setSelectedTripId(event.target.value)}>
@@ -2087,9 +2590,14 @@ export function TripMasterApp() {
                   ))}
                 </select>
               </label>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Chip>{selectedTrip ? selectedTrip.role.toUpperCase() : 'No role selected'}</Chip>
-                <Chip>{selectedTrip ? selectedTrip.destinationCountry ?? 'No country' : 'No country'}</Chip>
+              <div className="mt-4 space-y-2">
+                <MiniInfo label="Role" value={selectedTrip ? selectedTrip.role.toUpperCase() : 'None'} />
+                <MiniInfo label="Destination" value={selectedTrip?.destinationCountry ?? 'Unset'} />
+                <MiniInfo label="Flight mode" value={flightTripType} />
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Chip>{selectedTrip ? selectedTrip.role.toUpperCase() : 'Role not selected'}</Chip>
+                <Chip>{selectedTrip ? selectedTrip.destinationCountry ?? 'Country not set' : 'Country not set'}</Chip>
                 <Chip>{flightTripType}</Chip>
               </div>
               <p className="mt-3 text-sm text-slate-500">
@@ -2107,26 +2615,38 @@ export function TripMasterApp() {
               </button>
             </GlassCard>
 
-            <GlassCard className="lg:col-span-5">
+            <GlassCard className="lg:col-span-5 workspace-create-card">
               <SectionEyebrow>Create / Join</SectionEyebrow>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <input value={newTripTitle} onChange={(event) => setNewTripTitle(event.target.value)} placeholder="New trip title" />
-                <PrimaryButton onClick={createTrip}>Create Trip</PrimaryButton>
-                <input placeholder="Paste invite code" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} />
-                <button type="button" className="btn-secondary" onClick={acceptInvite}>
-                  Accept Invite
-                </button>
+              <p className="mt-1 text-sm text-slate-500">Create a new trip or join instantly with an invite code.</p>
+              <div className="mt-4 space-y-3">
+                <div className="rounded-2xl border border-sky-100 bg-white/80 p-3 shadow-[0_8px_18px_rgba(15,70,126,0.08)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-700/75">Create</p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <input value={newTripTitle} onChange={(event) => setNewTripTitle(event.target.value)} placeholder="New trip title" />
+                    <PrimaryButton onClick={createTrip}>Create Trip</PrimaryButton>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-sky-100 bg-white/80 p-3 shadow-[0_8px_18px_rgba(15,70,126,0.08)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-700/75">Join</p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <input placeholder="Paste invite code" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} />
+                    <button type="button" className="btn-secondary" onClick={acceptInvite}>
+                      Accept Invite
+                    </button>
+                  </div>
+                </div>
               </div>
             </GlassCard>
 
-            <GlassCard className="lg:col-span-3">
+            <GlassCard className="lg:col-span-3 workspace-collab-card">
               <SectionEyebrow>Collaboration</SectionEyebrow>
-              <button type="button" className="btn-secondary mt-4 w-full" onClick={createInvite} disabled={!nickname || !selectedTripId}>
+              <p className="mt-1 text-sm text-slate-500">Share planning with tripmates and control editing permissions.</p>
+              <button type="button" className="btn-primary mt-4 w-full" onClick={createInvite} disabled={!nickname || !selectedTripId}>
                 Create Invite Link
               </button>
-              <div className="mt-4 rounded-2xl bg-slate-50 p-3">
-                <p className="text-sm font-medium text-slate-800">Invited members can edit packing list</p>
-                <label className="mt-2 inline-flex items-center gap-2 text-sm text-slate-600">
+              <div className="mt-4 rounded-2xl border border-sky-100 bg-white/86 p-3 shadow-[0_8px_18px_rgba(15,70,126,0.07)]">
+                <p className="text-sm font-semibold text-slate-800">Invited member packing permissions</p>
+                <label className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-slate-700">
                   <input
                     type="checkbox"
                     checked={Boolean(selectedTrip?.allowMemberPackingEdit)}
@@ -2135,9 +2655,15 @@ export function TripMasterApp() {
                   />
                   <span>{selectedTrip?.allowMemberPackingEdit ? 'ON' : 'OFF'}</span>
                 </label>
-                <p className="mt-1 text-xs text-slate-500">Default OFF. Turn ON to allow invited members too.</p>
+                <p className="mt-1 text-xs text-slate-500">Default is OFF. Turn it ON to let invited members edit.</p>
               </div>
-              {generatedInviteLink ? <p className="info-text mt-3">Invite: {generatedInviteLink}</p> : null}
+              {generatedInviteLink ? (
+                <p className="info-text mt-3">
+                  Invite link
+                  <br />
+                  {generatedInviteLink}
+                </p>
+              ) : null}
               <button
                 type="button"
                 className="btn-secondary danger mt-3 w-full"
@@ -2186,6 +2712,7 @@ export function TripMasterApp() {
           </div>
         </div>
       }
+      mobileExperienceStrip={<MobileExperienceStrip activeTab={activeTab} onSelect={(tab) => openMainTab(tab)} />}
       activePage={
         <div className="space-y-5">
           {showAuthPanel ? (
@@ -2212,8 +2739,9 @@ export function TripMasterApp() {
           ) : null}
 
           {activeTab === 'flight' || activeTab === 'hotel' || activeTab === 'places' || activeTab === 'restaurants' ? (
-            <GlassCard className="journey-tools-card">
+            <GlassCard className="journey-tools-card journey-studio-themed">
               <SectionEyebrow>Journey Studio</SectionEyebrow>
+              <p className="mt-1 text-sm text-slate-500">Jump quickly between record, diary, and feed experiences.</p>
               <div className="journey-tools-row mt-3">
                 <button type="button" className="journey-tool-btn" onClick={() => openMainTab('record', 'tab-record-section')}>
                   <span aria-hidden>🧳</span>
@@ -2232,8 +2760,14 @@ export function TripMasterApp() {
           ) : null}
 
       {activeTab === 'flight' ? (
-        <section className="card section-card glass-card">
-          <PageHeader title="Flight" description="Search, compare, and save the flights that shape your trip." />
+        <section className="card section-card glass-card flight-themed-section">
+          <SectionMobileHero
+            title="Flight App Flow"
+            subtitle="Boarding-pass summary, departure timeline, and fare comparison cards"
+            imageUrl="https://cdn.dribbble.com/userupload/46915034/file/98baa819e35f6a3f911d0e7b1c48b741.png?crop=195x0-2813x1964&format=webp&resize=1200x900&vertical=center"
+            chips={['Boarding pass', 'Timeline', 'Price compare']}
+          />
+          <PageHeader title="Flight" description="Search and compare flights, then lock the best option for this trip." />
           <div className="flight-dashboard-grid">
             <article className="summary-card glass-card boarding-pass-card">
               <h3>Upcoming Flight</h3>
@@ -2254,7 +2788,7 @@ export function TripMasterApp() {
                   </p>
                 </>
               ) : (
-                <p className="empty-state-text">Add your first flight to organize your trip.</p>
+                <p className="empty-state-text">Add your first flight to complete your trip flow.</p>
               )}
             </article>
 
@@ -2362,7 +2896,7 @@ export function TripMasterApp() {
           <article className="detail-card glass-card">
             <h3>Available Flights</h3>
             <div className="result-list">
-              {flightResults.length === 0 ? <p className="empty-state-text">Add your first flight to organize your trip.</p> : null}
+              {flightResults.length === 0 ? <p className="empty-state-text">No flight results yet. Try a different route or date.</p> : null}
               {flightResults.map((flight) => (
                 <article key={flight.id} className="result-card">
                   <div className="result-head">
@@ -2413,10 +2947,16 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'hotel' ? (
-        <section className="card section-card glass-card">
+        <section className="card section-card glass-card hotel-themed-section">
+          <SectionMobileHero
+            title="Hotel App Flow"
+            subtitle="Reservation cards, stay details, and check-in notes in a mobile-like flow"
+            imageUrl="https://cdn.dribbble.com/userupload/42973342/file/original-dbc11cdaa4615b18c15e2be25007e3ae.png?format=webp&resize=1200x900&vertical=center"
+            chips={['Reservation', 'Stay detail', 'Check-in memo']}
+          />
           <PageHeader
             title="Hotel"
-            description="Keep your stay organized with reservation, check-in, and location details."
+            description="Keep reservations, check-in details, and location context organized in one place."
           />
 
           <div className="hotel-dashboard-grid">
@@ -2538,13 +3078,19 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'places' && (planHelperSubTab === 'places' || planHelperSubTab === 'activities') ? (
-        <section className="card section-card glass-card planhelper-section">
+        <section className="card section-card glass-card planhelper-section plan-dark-section">
+          <SectionMobileHero
+            title="PlanHelper Mobile Flow"
+            subtitle="Separate discovery cards and detail panel for fast planning decisions"
+            imageUrl="https://cdn.dribbble.com/userupload/46906420/file/b54c5f45d656929e83aa8a65ebb4ac51.jpg?format=webp&resize=1200x900&vertical=center"
+            chips={['Place cards', 'Activity cards', 'Detail panel']}
+          />
           <PageHeader
             title="PlanHelper"
             description={
               planHelperSubTab === 'activities'
-                ? 'Curate active experiences and select what fits your travel pace.'
-                : 'Choose places that match your mood, purpose, and route.'
+                ? 'Curate activity-heavy experiences and match them to your travel pace.'
+                : 'Pick destinations that fit your route and travel mood.'
             }
           >
             <SubTabBar items={planHelperSubTabItems} active={planHelperSubTab} />
@@ -2584,21 +3130,21 @@ export function TripMasterApp() {
                   className={placesViewMode === 'list' ? 'btn-secondary active' : 'btn-secondary'}
                   onClick={() => setPlacesViewMode('list')}
                 >
-                  {copy.listMode}
+                  List mode
                 </button>
                 <button
                   type="button"
                   className={placesViewMode === 'images' ? 'btn-secondary active' : 'btn-secondary'}
                   onClick={() => setPlacesViewMode('images')}
                 >
-                  {copy.imageMode}
+                  Image mode
                 </button>
               </div>
 
               {placesViewMode === 'images' ? (
                 <div className="image-grid">
                   {[...placesResponse.heroImages, ...placesResponse.cityImages.map((image) => image.imageUrl)].map((src, idx) => (
-                    <img key={`${src}-${idx}`} src={src} alt="destination inspiration" />
+                    <img key={`${src}-${idx}`} src={src} alt="Destination inspiration" />
                   ))}
                 </div>
               ) : (
@@ -2657,7 +3203,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'places' && planHelperSubTab === 'restaurants' ? (
-        <section className="card section-card glass-card planhelper-section">
+        <section className="card section-card glass-card planhelper-section plan-dark-section">
           <PageHeader
             title="PlanHelper"
             description="City-by-city restaurant recommendations with cuisine and vibe tags."
@@ -2730,10 +3276,16 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'record' ? (
-        <section id="tab-record-section" className="card section-card glass-card">
+        <section id="tab-record-section" className="card section-card glass-card record-themed-section">
+          <SectionMobileHero
+            title="Record App Flow"
+            subtitle="Media-first cards to save and share travel moments quickly"
+            imageUrl="https://images.openai.com/static-rsc-1/8Nqkz7ZZ3-Gm_TXJQY_A_04rmzm0cn1mhiq1LiUAcJRNu9Fms8Z8_qIs6OUiO6MEFfbUc8jHC9Bro3YgXce1BkL6TNXWB1OKitFKAdNHNBhH8ena-Hrn3E8m3n-3sfSrqGpjw8mr7T-Db_BmCJKbhA"
+            chips={['Media first', 'Memory card', 'Share-ready']}
+          />
           <div className="section-heading">
             <p className="section-kicker">🧳 Travel Record</p>
-            <h2>Save your media memories in shareable cards</h2>
+            <h2>Save media memories as shareable travel cards</h2>
           </div>
           <form onSubmit={saveRecord}>
             <label>
@@ -2792,10 +3344,16 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'diary' ? (
-        <section id="tab-diary-section" className="card section-card glass-card diary-section">
+        <section id="tab-diary-section" className="card section-card glass-card diary-section diary-themed-section">
+          <SectionMobileHero
+            title="Diary App Flow"
+            subtitle="Paper-style writing, weather badge, media, and voice memo in one flow"
+            imageUrl="https://images.squarespace-cdn.com/content/v1/603fd2e6b89a792feb000f9c/ab985b3c-d3da-474c-b3ca-332671b5e975/weekly%2Bmemory%2Bkeeper%2Bdigital%2Bjournal.jpg"
+            chips={['Paper mood', 'Weather badge', 'Voice memo']}
+          />
           <div className="diary-intro">
             <h2>📔 Travel Journal</h2>
-            <p>Capture today with a cozy memory card, not a boring form.</p>
+            <p>Capture today with a warm journal card, not a rigid form.</p>
           </div>
           <form onSubmit={saveDiary} className="diary-form-card">
             <label>
@@ -2804,7 +3362,7 @@ export function TripMasterApp() {
                 className="diary-input"
                 value={diaryTitle}
                 onChange={(event) => setDiaryTitle(event.target.value)}
-                placeholder="My warm travel moment"
+                placeholder="A one-line memory from today ✨"
                 required
               />
             </label>
@@ -2822,7 +3380,7 @@ export function TripMasterApp() {
                 </select>
               </label>
               <label>
-                Weather Emoji
+                Weather emoji
                 <select value={diaryWeatherEmoji} onChange={(event) => setDiaryWeatherEmoji(event.target.value)}>
                   {weatherEmojiOptions.map((emoji) => (
                     <option key={emoji}>{emoji}</option>
@@ -2848,7 +3406,7 @@ export function TripMasterApp() {
                 rows={6}
                 value={diaryContent}
                 onChange={(event) => setDiaryContent(event.target.value)}
-                placeholder="Write today's journey like a postcard to yourself..."
+                placeholder="Write today's journey like a postcard to your future self..."
                 required
               />
             </label>
@@ -2988,80 +3546,417 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'tripstargram' ? (
-        <section id="tab-tripstargram-section" className="card section-card glass-card">
-          <h2>📸 Tripstargram</h2>
-          <p>Build your own Instagram-style travel feed. Auto-create from diary or post manually.</p>
-          <form className="tripstargram-form" onSubmit={createTripstargramPost}>
-            <div className="grid three">
-              <label>
-                Post mode
-                <select value={tripstargramMode} onChange={(event) => setTripstargramMode(event.target.value as 'auto' | 'manual')}>
-                  <option value="auto">Auto from diary</option>
-                  <option value="manual">Manual post</option>
-                </select>
-              </label>
-              <label>
-                Linked diary
-                <select
-                  value={tripstargramDiaryId}
-                  onChange={(event) => setTripstargramDiaryId(event.target.value)}
-                  disabled={tripstargramMode !== 'auto' || diaries.length === 0}
-                >
-                  <option value="">{diaries.length ? 'Select diary' : 'No diary yet'}</option>
-                  {diaries.map((diary) => (
-                    <option key={diary.id} value={diary.id}>
-                      {diary.title} ({diary.date})
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Media (optional)
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  onChange={(event: ChangeEvent<HTMLInputElement>) => setTripstargramFiles(event.target.files)}
-                />
-              </label>
+        <section id="tab-tripstargram-section" className="card section-card glass-card tripstargram-themed-section">
+          <SectionMobileHero
+            title="Tripstargram Feed"
+            subtitle="Create collaborative travel postcards from diary memories with AI-assisted draft editing"
+            imageUrl="https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&w=1400&q=80"
+            chips={['Shared memory', 'Diary to post', 'Long-press reactions']}
+          />
+          <div className="tripstargram-header">
+            <div>
+              <h2>📸 Tripstargram</h2>
+              <p>Turn diary moments into warm social memory cards, then co-create and publish with your tripmates.</p>
             </div>
-            <label>
-              Caption {tripstargramMode === 'manual' ? '(required)' : '(optional override)'}
-              <textarea
-                rows={4}
-                value={tripstargramCaption}
-                onChange={(event) => setTripstargramCaption(event.target.value)}
-                placeholder={
-                  tripstargramMode === 'auto'
-                    ? 'Leave empty to auto-generate from diary'
-                    : 'Write your own travel post caption'
+            <div className="tripstargram-header-actions">
+              <button type="button" className="btn-secondary" onClick={saveTripstargramDraftLocally}>
+                Save Draft
+              </button>
+              <button type="button" className="btn-primary" onClick={generateTripstargramDraftFromDiary}>
+                New AI Draft
+              </button>
+            </div>
+          </div>
+
+          <div className="tripstargram-mode-grid">
+            <button
+              type="button"
+              className={cn('tripstargram-mode-card', tripstargramMode === 'auto' && 'active')}
+              onClick={() => {
+                setTripstargramMode('auto');
+                setTripstargramDraftGenerated(false);
+                if (!tripstargramDiaryId && diaries[0]) {
+                  setTripstargramDiaryId(diaries[0].id);
                 }
-                required={tripstargramMode === 'manual'}
-              />
-            </label>
-            <button type="submit" className="btn-primary">
-              Create Tripstargram Post
+              }}
+            >
+              <p>AI from diary</p>
+              <strong>Generate editable caption, mood, emoji, and tag suggestions.</strong>
             </button>
+            <button
+              type="button"
+              className={cn('tripstargram-mode-card', tripstargramMode === 'manual' && 'active')}
+              onClick={switchTripstargramToManual}
+            >
+              <p>Create manually</p>
+              <strong>Start from scratch and design your own travel post card.</strong>
+            </button>
+          </div>
+
+          <article className="tripstargram-diary-prompt">
+            <p className="tripstargram-panel-kicker">Diary to Post</p>
+            {selectedTripstargramDiary ? (
+              <>
+                <h3>Turn today&apos;s diary into a post?</h3>
+                <p>
+                  <strong>{selectedTripstargramDiary.title}</strong> · {selectedTripstargramDiary.place} · {selectedTripstargramDiary.date}
+                </p>
+                <p className="tripstargram-diary-snippet">{selectedTripstargramDiary.content.slice(0, 180)}</p>
+                <div className="tripstargram-inline-actions">
+                  <button type="button" className="btn-primary" onClick={generateTripstargramDraftFromDiary}>
+                    Generate draft from diary
+                  </button>
+                  <button type="button" className="btn-secondary" onClick={switchTripstargramToManual}>
+                    Create manually
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3>No diary yet</h3>
+                <p>Write a diary entry first, then you can generate an AI draft post from it.</p>
+              </>
+            )}
+          </article>
+
+          <form className="tripstargram-form tripstargram-editor-shell" onSubmit={createTripstargramPost}>
+            <div className="tripstargram-editor-grid">
+              <div className="tripstargram-editor-col">
+                <label>
+                  Linked diary
+                  <select
+                    value={tripstargramDiaryId}
+                    onChange={(event) => setTripstargramDiaryId(event.target.value)}
+                    disabled={tripstargramMode !== 'auto' || diaries.length === 0}
+                  >
+                    <option value="">{diaries.length ? 'Select diary' : 'No diary yet'}</option>
+                    {diaries.map((diary) => (
+                      <option key={diary.id} value={diary.id}>
+                        {diary.title} ({diary.date})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Media (optional)
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => setTripstargramFiles(event.target.files)}
+                  />
+                </label>
+                {tripstargramPreviewUrl ? (
+                  <div className="tripstargram-media-preview">
+                    {tripstargramPreviewIsVideo ? (
+                      <video controls src={tripstargramPreviewUrl} />
+                    ) : (
+                      <img src={tripstargramPreviewUrl} alt="tripstargram upload preview" />
+                    )}
+                  </div>
+                ) : null}
+                <label>
+                  Vibe preset
+                  <select value={tripstargramVibe} onChange={(event) => setTripstargramVibe(event.target.value)}>
+                    {tripstargramVibePresets.map((preset) => (
+                      <option key={preset} value={preset}>
+                        {preset}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Effect preset
+                  <select value={tripstargramEffect} onChange={(event) => setTripstargramEffect(event.target.value)}>
+                    {tripstargramEffectPresets.map((preset) => (
+                      <option key={preset} value={preset}>
+                        {preset}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="tripstargram-editor-col">
+                <label>
+                  Caption {tripstargramMode === 'manual' ? '(required)' : '(editable AI draft)'}
+                  <textarea
+                    rows={7}
+                    value={tripstargramCaption}
+                    onChange={(event) => setTripstargramCaption(event.target.value)}
+                    placeholder={
+                      tripstargramMode === 'auto'
+                        ? 'Generate a draft from diary, then refine before publishing'
+                        : 'Write your own travel memory caption'
+                    }
+                    required={tripstargramMode === 'manual'}
+                  />
+                </label>
+
+                <div className="tripstargram-emoji-picker">
+                  {tripstargramReactionOptions.map((emoji) => (
+                    <button
+                      key={`editor-emoji-${emoji}`}
+                      type="button"
+                      className={cn('reaction-pill', tripstargramSelectedEmojis.includes(emoji) && 'active')}
+                      onClick={() => toggleTripstargramEmoji(emoji)}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="tripstargram-tag-editor">
+                  <div className="tripstargram-tag-row">
+                    {buildTagCandidates(
+                      `${tripstargramCaption} ${selectedTripstargramDiary?.title ?? ''} ${selectedTripstargramDiary?.place ?? ''} ${tripstargramVibe}`
+                    )
+                      .slice(0, 8)
+                      .map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          className={cn('data-tag', tripstargramSuggestedTags.includes(tag) && 'active')}
+                          onClick={() => toggleTripstargramSuggestedTag(tag)}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                  </div>
+                  <label>
+                    Additional tags
+                    <input
+                      value={tripstargramCustomTags}
+                      onChange={(event) => setTripstargramCustomTags(event.target.value)}
+                      placeholder="#city #food #memory"
+                    />
+                  </label>
+                </div>
+
+                <label>
+                  Visibility
+                  <select
+                    value={tripstargramVisibility}
+                    onChange={(event) => setTripstargramVisibility(event.target.value as 'tripmates' | 'private' | 'public')}
+                  >
+                    <option value="tripmates">Tripmates only</option>
+                    <option value="private">Private draft</option>
+                    <option value="public">Public feed</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <article className="tripstargram-collab-card">
+              <p className="tripstargram-panel-kicker">Collaborators</p>
+              <p className="tripstargram-collab-description">Co-create this post with invited editors or add tripmates manually.</p>
+              <div className="tripstargram-collab-input-row">
+                <input
+                  value={tripstargramCoEditorInput}
+                  onChange={(event) => setTripstargramCoEditorInput(event.target.value)}
+                  placeholder="@tripmate nickname"
+                />
+                <button type="button" className="btn-secondary" onClick={addTripstargramCoEditor}>
+                  Add
+                </button>
+              </div>
+              <div className="tripstargram-collab-chip-row">
+                <span className="status-chip">Author: {nickname ?? 'traveler'}</span>
+                {tripstargramCoEditors.map((name) => (
+                  <button key={name} type="button" className="status-chip removable" onClick={() => removeTripstargramCoEditor(name)}>
+                    @{name} ✕
+                  </button>
+                ))}
+              </div>
+              <label className="tripstargram-coedit-toggle">
+                <input type="checkbox" checked={tripstargramAllowCoEdit} onChange={(event) => setTripstargramAllowCoEdit(event.target.checked)} />
+                Allow co-edit before publishing
+              </label>
+            </article>
+
+            <article className="tripstargram-preview-card">
+              <p className="tripstargram-panel-kicker">Live Preview</p>
+              <strong>Preview before publishing</strong>
+              <p className="tripstargram-preview-text">
+                {tripstargramPreviewCaption || 'Your preview will appear here after caption, emoji, and tags are added.'}
+              </p>
+              <div className="tripstargram-collab-row">
+                <span className="travel-mode-chip">Vibe: {tripstargramVibe}</span>
+                <span className="travel-mode-chip">Effect: {tripstargramEffect}</span>
+                <span className="travel-mode-chip">Visibility: {tripstargramVisibility}</span>
+                {tripstargramDraftGenerated ? <span className="status-chip">Created from diary</span> : null}
+                {tripstargramCoEditors.length ? <span className="status-chip">Shared memory</span> : null}
+              </div>
+            </article>
+
+            {tripstargramDrafts.length ? (
+              <article className="tripstargram-saved-drafts">
+                <p className="tripstargram-panel-kicker">Saved Drafts</p>
+                <div className="tripstargram-draft-list">
+                  {tripstargramDrafts.map((draft) => (
+                    <div key={draft.id} className="tripstargram-draft-item">
+                      <p>{draft.caption.slice(0, 120)}</p>
+                      <div className="tripstargram-inline-actions">
+                        <button type="button" className="btn-secondary" onClick={() => applySavedTripstargramDraft(draft)}>
+                          Load
+                        </button>
+                        <button type="button" className="btn-secondary danger" onClick={() => removeSavedTripstargramDraft(draft.id)}>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ) : null}
+
+            <div className="tripstargram-action-row">
+              <button type="button" className="btn-secondary" onClick={saveTripstargramDraftLocally}>
+                Save Draft
+              </button>
+              <button type="submit" className="btn-primary">
+                Publish Tripstargram Post
+              </button>
+            </div>
           </form>
 
+          <div className="tripstargram-feed-head">
+            <h3>Feed</h3>
+            <div className="tripstargram-feed-filters">
+              <button
+                type="button"
+                className={cn('btn-secondary', tripstargramFeedFilter === 'latest' && 'active')}
+                onClick={() => setTripstargramFeedFilter('latest')}
+              >
+                Latest
+              </button>
+              <button
+                type="button"
+                className={cn('btn-secondary', tripstargramFeedFilter === 'from-diary' && 'active')}
+                onClick={() => setTripstargramFeedFilter('from-diary')}
+              >
+                From diary
+              </button>
+              <button
+                type="button"
+                className={cn('btn-secondary', tripstargramFeedFilter === 'shared' && 'active')}
+                onClick={() => setTripstargramFeedFilter('shared')}
+              >
+                Shared
+              </button>
+            </div>
+          </div>
+
           <div className="result-list">
-            {tripstargramPosts.map((post) => (
-              <article key={post.id} className="result-card tripstargram-card">
-                <div className="tripstargram-meta">
-                  <strong>{post.authorNickname}</strong>
-                  <span>{new Date(post.createdAt).toLocaleString(language === 'en' ? 'en-US' : language)}</span>
-                </div>
-                {post.mediaUrl ? (
-                  post.mediaUrl.startsWith('data:video') ? (
-                    <video controls src={post.mediaUrl} className="tripstargram-media" />
-                  ) : (
-                    <img src={post.mediaUrl} alt="tripstargram post" className="tripstargram-media" />
-                  )
-                ) : null}
-                <p>{autoTranslate ? translatedTripstargramCaption[post.id] ?? post.caption : post.caption}</p>
-                {post.hashtags.length ? <p className="tripstargram-tags">{post.hashtags.join(' ')}</p> : null}
-                {post.diaryId ? <p className="tip-meta">Auto-created from diary</p> : null}
+            {filteredTripstargramPosts.map((post) => {
+              const postMeta = tripstargramPostMeta[post.id];
+              const postReaction = tripstargramReactionMap[post.id];
+              const reactionSummary = Object.entries(postReaction?.counts ?? {})
+                .filter((entry) => Number(entry[1]) > 0)
+                .sort((a, b) => Number(b[1]) - Number(a[1])) as Array<[TripstargramReactionEmoji, number]>;
+
+              return (
+                <article key={post.id} className="result-card tripstargram-card">
+                  <div className="tripstargram-meta">
+                    <strong>{post.authorNickname}</strong>
+                    <span>{new Date(post.createdAt).toLocaleString(language === 'en' ? 'en-US' : language)}</span>
+                  </div>
+                  {post.mediaUrl ? (
+                    post.mediaUrl.startsWith('data:video') ? (
+                      <video controls src={post.mediaUrl} className="tripstargram-media" />
+                    ) : (
+                      <img src={post.mediaUrl} alt="tripstargram post" className="tripstargram-media" />
+                    )
+                  ) : null}
+                  <p>{autoTranslate ? translatedTripstargramCaption[post.id] ?? post.caption : post.caption}</p>
+                  {post.hashtags.length ? <p className="tripstargram-tags">{post.hashtags.join(' ')}</p> : null}
+                  <div className="tripstargram-collab-row">
+                    {post.diaryId ? <span className="status-chip">Created from diary</span> : null}
+                    {postMeta?.collaborators.length ? (
+                      <span className="status-chip">Co-created with {postMeta.collaborators.map((name) => `@${name}`).join(', ')}</span>
+                    ) : null}
+                    {postMeta?.visibility ? <span className="travel-mode-chip">{postMeta.visibility}</span> : null}
+                  </div>
+
+                  <div className="tripstargram-reaction-zone">
+                    <button
+                      type="button"
+                      className="tripstargram-react-trigger"
+                      onPointerDown={() => onTripstargramReactionPointerDown(post.id)}
+                      onPointerUp={() => onTripstargramReactionPointerUp(post.id)}
+                      onPointerLeave={cancelTripstargramLongPress}
+                      onPointerCancel={cancelTripstargramLongPress}
+                      onContextMenu={(event) => event.preventDefault()}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          applyTripstargramReaction(post.id, '❤️');
+                        }
+                      }}
+                    >
+                      {postReaction?.selectedEmoji ?? '❤️'} Tap to like, long press for more reactions
+                    </button>
+                    {tripstargramReactionTrayPostId === post.id ? (
+                      <div className="tripstargram-reaction-tray">
+                        {tripstargramReactionOptions.map((emoji) => (
+                          <button
+                            key={`tray-${post.id}-${emoji}`}
+                            type="button"
+                            className="reaction-pill"
+                            onClick={() => applyTripstargramReaction(post.id, emoji)}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                        <button type="button" className="btn-secondary" onClick={() => setTripstargramReactionTrayPostId(null)}>
+                          Close
+                        </button>
+                      </div>
+                    ) : null}
+
+                    <div className="tripstargram-reaction-row">
+                      {tripstargramReactionOptions.map((emoji) => (
+                        <button
+                          key={`quick-${post.id}-${emoji}`}
+                          type="button"
+                          className={cn('reaction-pill', postReaction?.selectedEmoji === emoji && 'active')}
+                          onClick={() => applyTripstargramReaction(post.id, emoji)}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                    {reactionSummary.length ? (
+                      <div className="tripstargram-reaction-summary">
+                        {reactionSummary.map(([emoji, count]) => (
+                          <span key={`${post.id}-${emoji}`}>
+                            {emoji} {count}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="tip-meta">No reactions yet.</p>
+                    )}
+                  </div>
+
+                  {selectedTripId ? (
+                    <CommentsThread
+                      supabase={supabase}
+                      tripId={selectedTripId}
+                      targetType="tripstargram"
+                      targetId={post.id}
+                      language={language}
+                      autoTranslate={autoTranslate}
+                    />
+                  ) : null}
+                </article>
+              );
+            })}
+            {!filteredTripstargramPosts.length ? (
+              <article className="result-card">
+                <strong>No posts in this feed yet</strong>
+                <p>Create the first shared memory post and reactions/comments will appear here.</p>
               </article>
-            ))}
+            ) : null}
           </div>
         </section>
       ) : null}
@@ -3124,8 +4019,8 @@ export function TripMasterApp() {
               <label>
                 Category
                 <select value={supportCategory} onChange={(event) => setSupportCategory(event.target.value as any)}>
-                  <option value="contact">문의하기</option>
-                  <option value="improvement">서비스 개선요청</option>
+                  <option value="contact">Contact</option>
+                  <option value="improvement">Improvement request</option>
                 </select>
               </label>
               <label>
@@ -3154,7 +4049,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'restaurants' && informationSubTab === 'information' ? (
-        <section className="card section-card glass-card">
+        <section className="card section-card glass-card info-dark-section">
           <PageHeader
             title="Information"
             description="Destination context, curated highlights, and reliable local overview."
@@ -3222,7 +4117,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'places' && planHelperSubTab === 'transportation' ? (
-        <section id="extra-plan-section" className="card section-card glass-card planhelper-section">
+        <section id="extra-plan-section" className="card section-card glass-card planhelper-section plan-dark-section">
           <PageHeader
             title="PlanHelper"
             description="Review route options, travel prep, and day-by-day itinerary with budget control."
@@ -3307,14 +4202,14 @@ export function TripMasterApp() {
                   className={planPrepTopic === 'caution' ? 'plan-prep-tab active' : 'plan-prep-tab'}
                   onClick={() => setPlanPrepTopic('caution')}
                 >
-                  주의사항
+                  Caution
                 </button>
                 <button
                   type="button"
                   className={planPrepTopic === 'packing' ? 'plan-prep-tab active' : 'plan-prep-tab'}
                   onClick={() => setPlanPrepTopic('packing')}
                 >
-                  준비물
+                  Packing
                 </button>
                 <button
                   type="button"
@@ -3328,7 +4223,7 @@ export function TripMasterApp() {
             {planPrepTopic === 'packing' ? (
               <div className="packing-layout">
                 <div className="packing-panel">
-                  <p className="packing-section-title">기본 준비물 템플릿 (사용자화 가능)</p>
+                  <p className="packing-section-title">Base packing template (customizable)</p>
                   {basePackingTemplate.map((item, idx) => (
                     <div key={`${item}-${idx}`} className="packing-template-row">
                       <input
@@ -3337,13 +4232,13 @@ export function TripMasterApp() {
                         onChange={(event) => editTemplateItem(idx, event.target.value)}
                       />
                       <button type="button" className="packing-remove-btn" onClick={() => removeTemplateItem(idx)}>
-                        삭제
+                        Remove
                       </button>
                     </div>
                   ))}
                   <div className="packing-add-row">
                     <input
-                      placeholder="기본 준비물 추가 (예: 세면도구, 샴푸/린스)"
+                      placeholder="Add base packing item (ex. toiletries, shampoo/conditioner)"
                       value={newTemplatePackingText}
                       onChange={(event) => setNewTemplatePackingText(event.target.value)}
                       onKeyDown={(event) => {
@@ -3354,7 +4249,7 @@ export function TripMasterApp() {
                       }}
                     />
                     <button type="button" className="btn-secondary" onClick={addTemplateItem}>
-                      템플릿 추가
+                      Add template item
                     </button>
                   </div>
                   <button
@@ -3363,13 +4258,13 @@ export function TripMasterApp() {
                     onClick={syncTemplateToCurrentTrip}
                     disabled={!selectedTripId || !canEditPacking}
                   >
-                    현재 여행 리스트에 템플릿 반영
+                    Sync template to current trip
                   </button>
                 </div>
 
                 <div className="packing-panel">
                   <p className="packing-section-title">
-                    여행별 준비물 리스트
+                    Per-trip packing list
                     {selectedTripId ? ` · ${selectedTripTitle || 'Selected Trip'} (${countryCode})` : ''}
                   </p>
                   {selectedTripId ? (
@@ -3396,14 +4291,14 @@ export function TripMasterApp() {
                               onClick={() => removePackingItem(item.id)}
                               disabled={!canEditPacking}
                             >
-                              삭제
+                              Remove
                             </button>
                           </div>
                         ))}
                       </div>
                       <div className="packing-add-row">
                         <input
-                          placeholder="이 여행에만 필요한 준비물 추가"
+                          placeholder="Add item needed only for this trip"
                           value={newPackingText}
                           onChange={(event) => setNewPackingText(event.target.value)}
                           disabled={!canEditPacking}
@@ -3415,15 +4310,15 @@ export function TripMasterApp() {
                           }}
                         />
                         <button type="button" className="btn-secondary" onClick={addPackingItem} disabled={!canEditPacking}>
-                          추가
+                          Add
                         </button>
                       </div>
                       {!canEditPacking ? (
-                        <p className="packing-helper">현재 이 여행은 준비물 편집이 OFF 상태라 editor만 수정할 수 있어요.</p>
+                        <p className="packing-helper">Packing edit is OFF for this trip, so only editors can modify it.</p>
                       ) : null}
                     </>
                   ) : (
-                    <p className="packing-helper">Trip을 선택하면 여행별 체크리스트가 개별로 생성됩니다.</p>
+                    <p className="packing-helper">Select a trip to generate a dedicated per-trip checklist.</p>
                   )}
                 </div>
               </div>
@@ -3597,7 +4492,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'restaurants' && informationSubTab === 'tips' ? (
-        <section className="card section-card glass-card">
+        <section className="card section-card glass-card info-dark-section">
           <PageHeader
             title="Information"
             description="Practical local advice from shared community memories."
@@ -3629,13 +4524,13 @@ export function TripMasterApp() {
         <section className="card section-card glass-card">
           <h2>🎬 Entertainment</h2>
           <div className="grid two">
-            <label>
-              Mini title
-              <select value={entertainmentType} onChange={(event) => setEntertainmentType(event.target.value as 'movie' | 'book')}>
-                <option value="movie">영화 | Movie</option>
-                <option value="book">책 | Book</option>
-              </select>
-            </label>
+              <label>
+                Mini title
+                <select value={entertainmentType} onChange={(event) => setEntertainmentType(event.target.value as 'movie' | 'book')}>
+                  <option value="movie">Movie</option>
+                  <option value="book">Book</option>
+                </select>
+              </label>
             <label>
               Trip mood
               <select value={travelMood} onChange={(event) => setTravelMood(event.target.value)}>
@@ -3663,7 +4558,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'restaurants' && informationSubTab === 'event' ? (
-        <section id="extra-event-section" className="card section-card glass-card">
+        <section id="extra-event-section" className="card section-card glass-card info-dark-section">
           <PageHeader
             title="Information"
             description="Upcoming events and festivals with booking links and pricing context."

@@ -6,7 +6,7 @@ import { getSupabaseAdminClient } from '@/lib/supabase/server';
 
 const createSchema = z.object({
   tripId: z.string().uuid(),
-  targetType: z.enum(['diary', 'record', 'music']),
+  targetType: z.enum(['diary', 'record', 'music', 'tripstargram']),
   targetId: z.string().uuid(),
   content: z.string().min(1).max(1000),
   emoji: z.string().max(8).optional().nullable(),
