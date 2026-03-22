@@ -136,7 +136,7 @@ export function AuthPanel({ supabase, language, currentNickname, onSignedIn, onS
       return;
     }
 
-    const redirectTo = `${window.location.origin}`;
+    const redirectTo = `${window.location.origin}/auth/callback`;
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo },

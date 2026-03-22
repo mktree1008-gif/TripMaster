@@ -5,7 +5,7 @@ import { AuthPanel } from '@/components/auth/auth-panel';
 import { CommentsThread } from '@/components/comments/comments-thread';
 import { airportCountryMap, cityImages, countryCities } from '@/lib/curated-data';
 import { generateFlights, generateHotels, airports } from '@/lib/flight-hotel';
-import { PrepGuideTopic, travelPrepGuides } from '@/lib/info-plan-data';
+import { PrepGuideTopic, transportationByCountry, travelPrepGuides } from '@/lib/info-plan-data';
 import { t, languageOrder } from '@/lib/i18n';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import {
@@ -107,6 +107,141 @@ async function filesToDataUrls(files: FileList | null) {
   return Promise.all(tasks);
 }
 
+function buildLocalPlan(input: {
+  countryCode: string;
+  city: string;
+  departureDate: string;
+  returnDate: string;
+  returnFlightTime: string;
+  mode: 'specific' | 'simple';
+  mood: string;
+  companion: string;
+  peopleCount: number;
+  stylePreference: string;
+  budgetKrw: number;
+  likesNightView: boolean;
+  likesAlcohol: boolean;
+  foodFocus: 'low' | 'medium' | 'high';
+  selectedPlaces: string[];
+}) {
+  const start = new Date(input.departureDate);
+  const end = new Date(input.returnDate);
+  const oneDay = 1000 * 60 * 60 * 24;
+  const dayCount = Math.max(1, Math.min(14, Math.floor((end.getTime() - start.getTime()) / oneDay) + 1));
+  const isRelaxed = /heal|rest|stress/i.test(input.mood);
+
+  const itinerary = Array.from({ length: dayCount }, (_, idx) => {
+    const day = idx + 1;
+    const isLastDay = day === dayCount;
+    const placeHint = input.selectedPlaces[idx % Math.max(input.selectedPlaces.length, 1)] ?? `${input.city} highlight`;
+
+    if (isLastDay) {
+      return {
+        day,
+        title: `Departure day (${input.returnFlightTime} flight)`,
+        blocks: [
+          '08:30 - Easy breakfast nearby',
+          `10:00 - Last walk around ${placeHint}`,
+          '13:00 - Airport transfer',
+          `${input.returnFlightTime} - Return flight`,
+        ],
+      };
+    }
+
+    const foodBlock =
+      input.foodFocus === 'high'
+        ? '12:30 - Signature food route (market + famous restaurant)'
+        : input.foodFocus === 'medium'
+          ? '12:30 - Local lunch recommendation'
+          : '12:30 - Light meal near next attraction';
+
+    const eveningBlock = input.likesAlcohol
+      ? input.likesNightView
+        ? '20:00 - Rooftop bar + skyline'
+        : '20:00 - Local pub street'
+      : input.likesNightView
+        ? '20:00 - Night observatory / city walk'
+        : '20:00 - Rest and recharge';
+
+    if (input.mode === 'simple') {
+      return {
+        day,
+        title: `Day ${day} relaxed route (${input.companion}, ${input.peopleCount}pax)`,
+        blocks: ['10:00 - Slow brunch', `12:00 - Main destination: ${placeHint}`, foodBlock, '16:00 - Cafe break', eveningBlock],
+      };
+    }
+
+    return {
+      day,
+      title: `Day ${day} detailed route (${input.stylePreference})`,
+      blocks: [
+        '08:30 - Local breakfast',
+        `10:00 - Core activity at ${placeHint}`,
+        foodBlock,
+        '13:30 - Transit to next area',
+        '15:00 - Secondary attraction',
+        '18:30 - Dinner reservation',
+        eveningBlock,
+      ],
+    };
+  });
+
+  const transportation = transportationByCountry[input.countryCode] ?? [
+    {
+      mode: 'Public transit + walk',
+      reason: 'Most convenient default option for city travel.',
+      estimatedCost: 'USD 6-20/day',
+      bookingUrl: 'https://www.google.com/travel/',
+    },
+  ];
+
+  const perDayBase = isRelaxed ? 180000 : 250000;
+  const styleMultiplier = input.mode === 'specific' ? 1.18 : 0.94;
+  const peopleMultiplier = 0.7 + input.peopleCount * 0.65;
+  const foodMultiplier = input.foodFocus === 'high' ? 1.2 : input.foodFocus === 'medium' ? 1.08 : 0.95;
+  const nightlifeMultiplier = input.likesNightView ? 1.05 : 1;
+  const alcoholMultiplier = input.likesAlcohol ? 1.08 : 1;
+  const estimatedCostKrw = Math.round(
+    dayCount * perDayBase * styleMultiplier * peopleMultiplier * foodMultiplier * nightlifeMultiplier * alcoholMultiplier
+  );
+  const usagePercent = Math.round(Math.min(estimatedCostKrw / Math.max(input.budgetKrw, 1), 2) * 100);
+  const overBudgetKrw = Math.max(estimatedCostKrw - input.budgetKrw, 0);
+
+  return {
+    itinerary,
+    transportation,
+    budget: {
+      budgetKrw: input.budgetKrw,
+      estimatedCostKrw,
+      overBudgetKrw,
+      usagePercent,
+    },
+    recommendationSummary: isRelaxed
+      ? `Relaxed schedule tuned for ${input.foodFocus} food focus${input.likesNightView ? ', night-view friendly' : ''}.`
+      : `Efficient sightseeing schedule tuned for ${input.foodFocus} food focus${input.likesAlcohol ? ' and nightlife' : ''}.`,
+  };
+}
+
+const demoTripsStorageKey = 'tripmaster-demo-trips-v1';
+const demoRecordsStoragePrefix = 'tripmaster-demo-records-v1:';
+const demoDiariesStoragePrefix = 'tripmaster-demo-diaries-v1:';
+
+function readLocalJson<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeLocalJson<T>(key: string, value: T) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(key, JSON.stringify(value));
+}
+
 export function TripMasterApp() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const backendConfigured = Boolean(
@@ -129,7 +264,14 @@ export function TripMasterApp() {
   const [inviteCode, setInviteCode] = useState('');
   const [generatedInviteLink, setGeneratedInviteLink] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
+  const [statusToast, setStatusToast] = useState<{ id: number; message: string; tone: 'success' | 'error' | 'info' } | null>(
+    null
+  );
+  const [showAuthPanel, setShowAuthPanel] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [updatingPackingPermission, setUpdatingPackingPermission] = useState(false);
+  const [deletingTrip, setDeletingTrip] = useState(false);
+  const [deletingAllTrips, setDeletingAllTrips] = useState(false);
 
   const [flightOrigin, setFlightOrigin] = useState('ICN');
   const [flightDestination, setFlightDestination] = useState('NRT');
@@ -230,6 +372,31 @@ export function TripMasterApp() {
   const [supportMessage, setSupportMessage] = useState('');
   const [supportHistory, setSupportHistory] = useState<any[]>([]);
 
+  function inferStatusTone(message: string): 'success' | 'error' | 'info' {
+    const normalized = message.toLowerCase();
+    if (
+      normalized.includes('fail') ||
+      normalized.includes('error') ||
+      normalized.includes('not') ||
+      normalized.includes('required') ||
+      normalized.includes('denied') ||
+      normalized.includes('unable')
+    ) {
+      return 'error';
+    }
+    if (
+      normalized.includes('success') ||
+      normalized.includes('created') ||
+      normalized.includes('saved') ||
+      normalized.includes('accepted') ||
+      normalized.includes('updated') ||
+      normalized.includes('generated')
+    ) {
+      return 'success';
+    }
+    return 'info';
+  }
+
   useEffect(() => {
     const initialCountry = airportCountryMap[flightDestination]?.countryCode ?? 'JP';
     setCountryCode(initialCountry);
@@ -258,7 +425,7 @@ export function TripMasterApp() {
       return true;
     }
     if (res.message) {
-      setStatusMessage(res.message);
+      showStatus(res.message);
     }
     return false;
   }
@@ -266,14 +433,18 @@ export function TripMasterApp() {
   async function loadTrips() {
     const res = await apiFetch<TripSummary[]>(supabase, '/api/trips', { method: 'GET' });
     if (res.ok && res.data) {
-      setTrips(res.data);
-      if (!selectedTripId && res.data.length > 0) {
-        setSelectedTripId(res.data[0].id);
-      }
+      const tripsData = res.data ?? [];
+      setTrips(tripsData);
+      setSelectedTripId((prev) => {
+        if (prev && tripsData.some((trip) => trip.id === prev)) {
+          return prev;
+        }
+        return tripsData[0]?.id ?? '';
+      });
       return true;
     }
     if (res.message) {
-      setStatusMessage(res.message);
+      showStatus(res.message);
     }
     return false;
   }
@@ -295,9 +466,28 @@ export function TripMasterApp() {
     });
   }
 
+  function showStatus(message: string, tone?: 'success' | 'error' | 'info') {
+    setStatusMessage(message);
+    setStatusToast({
+      id: Date.now(),
+      message,
+      tone: tone ?? inferStatusTone(message),
+    });
+  }
+
   function requireSignIn() {
+    if (!backendConfigured) {
+      showStatus('Cloud backend is not connected yet. Add real Supabase keys first.');
+      return false;
+    }
     if (nickname) return true;
-    setStatusMessage('Please sign in first.');
+    showStatus('Please sign in first.');
+    return false;
+  }
+
+  function requireTripSelected() {
+    if (selectedTripId) return true;
+    showStatus('Create or select a trip first in Trip Workspace.');
     return false;
   }
 
@@ -307,6 +497,16 @@ export function TripMasterApp() {
 
   useEffect(() => {
     const init = async () => {
+      if (!backendConfigured) {
+        const localTrips = readLocalJson<TripSummary[]>(demoTripsStorageKey, []);
+        setTrips(localTrips);
+        if (localTrips.length) {
+          setSelectedTripId(localTrips[0].id);
+        }
+        showStatus('Demo mode: backend is not connected, so data is saved locally on this device.');
+        return;
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -320,15 +520,48 @@ export function TripMasterApp() {
       }
     };
     init();
-  }, [supabase]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabase, backendConfigured]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!selectedTripId) return;
+    if (!selectedTripId) {
+      setRecords([]);
+      setDiaries([]);
+      setMusicJobs([]);
+      setTripstargramPosts([]);
+      return;
+    }
+    if (!backendConfigured) {
+      setRecords(readLocalJson<RecordEntry[]>(`${demoRecordsStoragePrefix}${selectedTripId}`, []));
+      setDiaries(readLocalJson<DiaryEntry[]>(`${demoDiariesStoragePrefix}${selectedTripId}`, []));
+      setMusicJobs([]);
+      setTripstargramPosts([]);
+      return;
+    }
     loadRecords();
     loadDiaries();
     loadMusicJobs();
     loadTripstargram();
-  }, [selectedTripId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedTripId, backendConfigured]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!statusMessage) return;
+    setStatusToast((prev) => {
+      if (prev?.message === statusMessage) return prev;
+      return {
+        id: Date.now(),
+        message: statusMessage,
+        tone: inferStatusTone(statusMessage),
+      };
+    });
+  }, [statusMessage]);
+
+  useEffect(() => {
+    if (!statusToast) return;
+    const timeout = window.setTimeout(() => {
+      setStatusToast((prev) => (prev?.id === statusToast.id ? null : prev));
+    }, 3200);
+    return () => window.clearTimeout(timeout);
+  }, [statusToast]);
 
   useEffect(() => {
     if (!diaries.length) {
@@ -437,38 +670,175 @@ export function TripMasterApp() {
 
   async function onSignedIn(nextNickname: string) {
     setNickname(nextNickname);
+    setShowAuthPanel(false);
     await loadProfile();
     await loadTrips();
   }
 
   async function onSignedOut() {
     setNickname(null);
+    setShowAuthPanel(true);
     setProfile(null);
     setTrips([]);
     setSelectedTripId('');
     setTripstargramPosts([]);
   }
 
+  function clearLocalTripCaches(tripIds: string[]) {
+    if (typeof window === 'undefined' || tripIds.length === 0) return;
+    for (const tripId of tripIds) {
+      window.localStorage.removeItem(`${demoRecordsStoragePrefix}${tripId}`);
+      window.localStorage.removeItem(`${demoDiariesStoragePrefix}${tripId}`);
+    }
+    setPackingByTrip((prev) => {
+      const next = Object.fromEntries(
+        Object.entries(prev).filter(([key]) => !tripIds.some((tripId) => key.startsWith(`${tripId}:`)))
+      );
+      return next;
+    });
+  }
+
   async function createTrip() {
+    const title = newTripTitle.trim();
+    if (!title) {
+      showStatus('Please enter a trip title first.');
+      return;
+    }
+
+    if (!backendConfigured) {
+      const localTrip: TripSummary = {
+        id: `local-trip-${Date.now()}`,
+        title,
+        destinationCountry: countryCode,
+        ownerId: 'local-user',
+        role: 'editor',
+        allowMemberPackingEdit: false,
+        createdAt: new Date().toISOString(),
+      };
+      setTrips((prev) => {
+        const next = [localTrip, ...prev];
+        writeLocalJson(demoTripsStorageKey, next);
+        return next;
+      });
+      setSelectedTripId(localTrip.id);
+      showStatus('Successfully created trip (demo mode).', 'success');
+      return;
+    }
+
     if (!requireSignIn()) return;
     const res = await apiFetch<TripSummary>(supabase, '/api/trips', {
       method: 'POST',
       body: JSON.stringify({
-        title: newTripTitle,
+        title,
         destinationCountry: countryCode,
       }),
     });
     if (res.ok && res.data) {
       await loadTrips();
       setSelectedTripId(res.data.id);
-      setStatusMessage('Trip created.');
+      showStatus('Successfully created trip.', 'success');
     } else {
-      setStatusMessage(res.message ?? 'Failed to create trip');
+      showStatus(res.message ?? 'Failed to create trip');
+    }
+  }
+
+  async function deleteSelectedTrip() {
+    if (!requireTripSelected()) return;
+
+    const selected = trips.find((trip) => trip.id === selectedTripId);
+    if (!selected) {
+      showStatus('Selected trip was not found.');
+      return;
+    }
+
+    const okDelete = window.confirm(`Delete "${selected.title}"? This action cannot be undone.`);
+    if (!okDelete) return;
+
+    if (!backendConfigured) {
+      const nextTrips = trips.filter((trip) => trip.id !== selectedTripId);
+      setTrips(nextTrips);
+      setSelectedTripId(nextTrips[0]?.id ?? '');
+      writeLocalJson(demoTripsStorageKey, nextTrips);
+      clearLocalTripCaches([selectedTripId]);
+      showStatus('Selected trip deleted successfully.', 'success');
+      return;
+    }
+
+    if (!requireSignIn()) return;
+    setDeletingTrip(true);
+    try {
+      const res = await apiFetch<{ deleted: boolean; tripId: string }>(supabase, '/api/trips', {
+        method: 'DELETE',
+        body: JSON.stringify({
+          tripId: selectedTripId,
+        }),
+      });
+      if (res.ok) {
+        await loadTrips();
+        showStatus('Selected trip deleted successfully.', 'success');
+      } else {
+        showStatus(res.message ?? 'Failed to delete selected trip');
+      }
+    } finally {
+      setDeletingTrip(false);
+    }
+  }
+
+  async function deleteAllTrips() {
+    if (!trips.length) {
+      showStatus('No trips to delete.');
+      return;
+    }
+
+    const okDelete = window.confirm('Delete ALL your created trips? This action cannot be undone.');
+    if (!okDelete) return;
+
+    if (!backendConfigured) {
+      const tripIds = trips.map((trip) => trip.id);
+      setTrips([]);
+      setSelectedTripId('');
+      writeLocalJson(demoTripsStorageKey, []);
+      clearLocalTripCaches(tripIds);
+      showStatus('All trips deleted successfully.', 'success');
+      return;
+    }
+
+    if (!requireSignIn()) return;
+    setDeletingAllTrips(true);
+    try {
+      const res = await apiFetch<{ deletedCount: number }>(supabase, '/api/trips', {
+        method: 'DELETE',
+        body: JSON.stringify({
+          deleteAll: true,
+        }),
+      });
+      if (res.ok) {
+        await loadTrips();
+        const deletedCount = res.data?.deletedCount ?? 0;
+        showStatus(`${deletedCount} trips deleted successfully.`, 'success');
+      } else {
+        showStatus(res.message ?? 'Failed to delete all trips');
+      }
+    } finally {
+      setDeletingAllTrips(false);
     }
   }
 
   async function updateTripDestination() {
-    if (!selectedTripId) return;
+    if (!requireTripSelected()) return;
+
+    if (!backendConfigured) {
+      setTrips((prev) => {
+        const next = prev.map((trip) =>
+          trip.id === selectedTripId ? { ...trip, destinationCountry: countryCode } : trip
+        );
+        writeLocalJson(demoTripsStorageKey, next);
+        return next;
+      });
+      showStatus('Demo mode: destination synced locally.');
+      return;
+    }
+
     const res = await apiFetch<TripSummary>(supabase, '/api/trips', {
       method: 'PATCH',
       body: JSON.stringify({
@@ -478,6 +848,9 @@ export function TripMasterApp() {
     });
     if (res.ok && res.data) {
       applyTripUpdate(res.data);
+      showStatus('Destination synced to trip.', 'success');
+    } else {
+      showStatus(res.message ?? 'Failed to sync destination');
     }
   }
 
@@ -495,23 +868,24 @@ export function TripMasterApp() {
 
       if (res.ok && res.data) {
         applyTripUpdate(res.data);
-        setStatusMessage(
+        showStatus(
           nextValue
             ? 'Invited members can now edit this trip packing list.'
-            : 'Packing list editing is now limited to editors for this trip.'
+            : 'Packing list editing is now limited to editors for this trip.',
+          'success'
         );
       } else {
-        setStatusMessage(res.message ?? 'Failed to update packing permission');
+        showStatus(res.message ?? 'Failed to update packing permission');
       }
     } catch {
-      setStatusMessage('Failed to update packing permission');
+      showStatus('Failed to update packing permission');
     }
     setUpdatingPackingPermission(false);
   }
 
   async function createInvite() {
     if (!requireSignIn()) return;
-    if (!selectedTripId) return;
+    if (!requireTripSelected()) return;
     const res = await apiFetch<any>(supabase, '/api/invites', {
       method: 'POST',
       body: JSON.stringify({
@@ -521,25 +895,28 @@ export function TripMasterApp() {
     });
     if (res.ok && res.data) {
       setGeneratedInviteLink(res.data.inviteLink || `Code: ${res.data.code}`);
-      setStatusMessage('Invite created.');
+      showStatus('Invite created successfully.', 'success');
     } else {
-      setStatusMessage(res.message ?? 'Failed to create invite');
+      showStatus(res.message ?? 'Failed to create invite');
     }
   }
 
   async function acceptInvite() {
     if (!requireSignIn()) return;
-    if (!inviteCode.trim()) return;
+    if (!inviteCode.trim()) {
+      showStatus('Please enter an invite code first.');
+      return;
+    }
     const res = await apiFetch(supabase, '/api/invites', {
       method: 'PATCH',
       body: JSON.stringify({ code: inviteCode.trim() }),
     });
     if (res.ok) {
-      setStatusMessage('Invite accepted.');
+      showStatus('Invite accepted successfully.', 'success');
       setInviteCode('');
       await loadTrips();
     } else {
-      setStatusMessage(res.message ?? 'Failed to accept invite');
+      showStatus(res.message ?? 'Failed to accept invite');
     }
   }
 
@@ -554,8 +931,8 @@ export function TripMasterApp() {
 
   async function savePlace(place: any) {
     if (!requireSignIn()) return;
-    if (!selectedTripId) return;
-    await apiFetch(supabase, '/api/places', {
+    if (!requireTripSelected()) return;
+    const res = await apiFetch(supabase, '/api/places', {
       method: 'POST',
       body: JSON.stringify({
         tripId: selectedTripId,
@@ -566,7 +943,12 @@ export function TripMasterApp() {
         theme: place.theme,
       }),
     });
-    setSelectedPlaceNames((prev) => (prev.includes(place.name) ? prev : [...prev, place.name]));
+    if (res.ok) {
+      setSelectedPlaceNames((prev) => (prev.includes(place.name) ? prev : [...prev, place.name]));
+      showStatus(`${place.name} added to your trip.`, 'success');
+    } else {
+      showStatus(res.message ?? 'Failed to add place');
+    }
   }
 
   async function loadRestaurants() {
@@ -632,7 +1014,10 @@ export function TripMasterApp() {
 
   async function submitTip() {
     if (!requireSignIn()) return;
-    if (!tipMessage.trim()) return;
+    if (!tipMessage.trim()) {
+      showStatus('Please write a tip first.');
+      return;
+    }
     const res = await apiFetch(supabase, '/api/tips', {
       method: 'POST',
       body: JSON.stringify({
@@ -645,13 +1030,18 @@ export function TripMasterApp() {
     if (res.ok) {
       setTipMessage('');
       await loadTips();
+      showStatus('Tip shared successfully.', 'success');
     } else {
-      setStatusMessage(res.message ?? 'Failed to add tip');
+      showStatus(res.message ?? 'Failed to add tip');
     }
   }
 
   async function loadRecords() {
     if (!selectedTripId) return;
+    if (!backendConfigured) {
+      setRecords(readLocalJson<RecordEntry[]>(`${demoRecordsStoragePrefix}${selectedTripId}`, []));
+      return;
+    }
     const res = await apiFetch<RecordEntry[]>(supabase, `/api/records?tripId=${selectedTripId}`, { method: 'GET' });
     if (res.ok && res.data) {
       setRecords(res.data);
@@ -660,9 +1050,36 @@ export function TripMasterApp() {
 
   async function saveRecord(event: FormEvent) {
     event.preventDefault();
-    if (!requireSignIn()) return;
-    if (!selectedTripId || !recordTitle.trim()) return;
+    if (!recordTitle.trim()) {
+      showStatus('Please enter a record title.');
+      return;
+    }
+    if (!requireTripSelected()) return;
+
     const mediaUrls = await filesToDataUrls(recordFiles);
+
+    if (!backendConfigured) {
+      const localRecord: RecordEntry = {
+        id: `local-record-${Date.now()}`,
+        tripId: selectedTripId,
+        title: recordTitle.trim(),
+        note: recordNote,
+        mediaUrls,
+        createdAt: new Date().toISOString(),
+      };
+      setRecords((prev) => {
+        const next = [localRecord, ...prev];
+        writeLocalJson(`${demoRecordsStoragePrefix}${selectedTripId}`, next);
+        return next;
+      });
+      setRecordTitle('');
+      setRecordNote('');
+      setRecordFiles(null);
+      showStatus('Demo mode: record saved locally.');
+      return;
+    }
+
+    if (!requireSignIn()) return;
     const res = await apiFetch<RecordEntry>(supabase, '/api/records', {
       method: 'POST',
       body: JSON.stringify({
@@ -677,13 +1094,18 @@ export function TripMasterApp() {
       setRecordNote('');
       setRecordFiles(null);
       await loadRecords();
+      showStatus('Record saved successfully.', 'success');
     } else {
-      setStatusMessage(res.message ?? 'Failed to save record');
+      showStatus(res.message ?? 'Failed to save record');
     }
   }
 
   async function loadDiaries() {
     if (!selectedTripId) return;
+    if (!backendConfigured) {
+      setDiaries(readLocalJson<DiaryEntry[]>(`${demoDiariesStoragePrefix}${selectedTripId}`, []));
+      return;
+    }
     const res = await apiFetch<DiaryEntry[]>(supabase, `/api/diaries?tripId=${selectedTripId}`, { method: 'GET' });
     if (res.ok && res.data) {
       setDiaries(res.data);
@@ -704,13 +1126,13 @@ export function TripMasterApp() {
   async function createTripstargramPost(event: FormEvent) {
     event.preventDefault();
     if (!requireSignIn()) return;
-    if (!selectedTripId) return;
+    if (!requireTripSelected()) return;
     if (tripstargramMode === 'auto' && !tripstargramDiaryId) {
-      setStatusMessage('Select a diary to auto-create a Tripstargram post.');
+      showStatus('Select a diary to auto-create a Tripstargram post.');
       return;
     }
     if (tripstargramMode === 'manual' && !tripstargramCaption.trim()) {
-      setStatusMessage('Caption is required for manual Tripstargram posts.');
+      showStatus('Caption is required for manual Tripstargram posts.');
       return;
     }
 
@@ -733,20 +1155,52 @@ export function TripMasterApp() {
         setTripstargramDiaryId('');
       }
       await loadTripstargram();
+      showStatus('Tripstargram post created successfully.', 'success');
     } else {
-      setStatusMessage(res.message ?? 'Failed to create Tripstargram post');
+      showStatus(res.message ?? 'Failed to create Tripstargram post');
     }
   }
 
   async function saveDiary(event: FormEvent) {
     event.preventDefault();
-    if (!requireSignIn()) return;
-    if (!selectedTripId || !diaryTitle.trim() || !diaryContent.trim()) return;
+    if (!diaryTitle.trim() || !diaryContent.trim()) {
+      showStatus('Please fill in diary title and text.');
+      return;
+    }
+    if (!requireTripSelected()) return;
+
     const mediaUrls = await filesToDataUrls(diaryFiles);
     if (audioDataUrl) {
       mediaUrls.push(audioDataUrl);
     }
 
+    if (!backendConfigured) {
+      const localDiary: DiaryEntry = {
+        id: `local-diary-${Date.now()}`,
+        tripId: selectedTripId,
+        title: diaryTitle.trim(),
+        content: diaryContent,
+        date: diaryDate,
+        place: diaryPlace,
+        weatherEmoji: diaryWeatherEmoji as DiaryEntry['weatherEmoji'],
+        weatherLabel: diaryWeatherLabel,
+        mediaUrls,
+        createdAt: new Date().toISOString(),
+      };
+      setDiaries((prev) => {
+        const next = [localDiary, ...prev];
+        writeLocalJson(`${demoDiariesStoragePrefix}${selectedTripId}`, next);
+        return next;
+      });
+      setDiaryTitle('');
+      setDiaryContent('');
+      setAudioDataUrl(null);
+      setDiaryFiles(null);
+      showStatus('Demo mode: diary saved locally.');
+      return;
+    }
+
+    if (!requireSignIn()) return;
     const res = await apiFetch<DiaryEntry>(supabase, '/api/diaries', {
       method: 'POST',
       body: JSON.stringify({
@@ -767,8 +1221,9 @@ export function TripMasterApp() {
       setAudioDataUrl(null);
       setDiaryFiles(null);
       await loadDiaries();
+      showStatus('Diary saved successfully.', 'success');
     } else {
-      setStatusMessage(res.message ?? 'Failed to save diary');
+      showStatus(res.message ?? 'Failed to save diary');
     }
   }
 
@@ -782,7 +1237,7 @@ export function TripMasterApp() {
 
   async function createMusicJob(diaryId: string) {
     if (!requireSignIn()) return;
-    if (!selectedTripId) return;
+    if (!requireTripSelected()) return;
     const res = await apiFetch<MusicJob>(supabase, '/api/music/jobs', {
       method: 'POST',
       body: JSON.stringify({
@@ -795,14 +1250,15 @@ export function TripMasterApp() {
 
     if (res.ok) {
       await loadMusicJobs();
+      showStatus('AI music generation started.', 'success');
     } else {
-      setStatusMessage(res.message ?? 'Failed to generate music');
+      showStatus(res.message ?? 'Failed to generate music');
     }
   }
 
   async function generatePlan() {
-    if (!requireSignIn()) return;
-    if (!selectedTripId) return;
+    if (!requireTripSelected()) return;
+
     const payload = {
       tripId: selectedTripId,
       countryCode,
@@ -827,6 +1283,31 @@ export function TripMasterApp() {
       selectedPlaces: selectedPlaceNames,
     };
 
+    if (!backendConfigured) {
+      const localPlan = buildLocalPlan({
+        countryCode,
+        city: placesCity,
+        departureDate,
+        returnDate,
+        returnFlightTime,
+        mode: planMode,
+        mood: travelMood,
+        companion,
+        peopleCount,
+        stylePreference,
+        budgetKrw,
+        likesNightView,
+        likesAlcohol,
+        foodFocus,
+        selectedPlaces: selectedPlaceNames,
+      });
+      setPlanResult(localPlan);
+      setTransportOptions(localPlan.transportation || []);
+      showStatus('Demo mode: itinerary generated locally.');
+      return;
+    }
+
+    if (!requireSignIn()) return;
     const res = await apiFetch<any>(supabase, '/api/plan', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -835,48 +1316,68 @@ export function TripMasterApp() {
     if (res.ok && res.data) {
       setPlanResult(res.data);
       setTransportOptions(res.data.transportation || []);
+      showStatus('Itinerary generated successfully.', 'success');
     } else {
-      setStatusMessage(res.message ?? 'Failed to generate plan');
+      showStatus(res.message ?? 'Failed to generate plan');
     }
   }
 
   async function autoWeather() {
     const coord = cityCoordinates[diaryPlace];
-    if (!coord) return;
+    if (!coord) {
+      showStatus('Weather is unavailable for the selected city.');
+      return;
+    }
     const res = await fetch(`/api/weather?lat=${coord.lat}&lng=${coord.lng}`);
     const json = (await res.json()) as { ok: boolean; data?: { emoji: string; label: string; temperatureC: number | null } };
     if (json.ok && json.data) {
       setDiaryWeatherEmoji(json.data.emoji);
       const tempText = json.data.temperatureC === null ? '' : ` (${json.data.temperatureC.toFixed(1)}°C)`;
       setDiaryWeatherLabel(`${json.data.label}${tempText}`);
+      showStatus('Weather updated automatically.', 'success');
+    } else {
+      showStatus('Failed to load weather automatically.');
     }
   }
 
   async function startRecording() {
-    if (!navigator.mediaDevices?.getUserMedia) return;
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const recorder = new MediaRecorder(stream);
-    const chunks: Blob[] = [];
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) chunks.push(event.data);
-    };
-    recorder.onstop = async () => {
-      const blob = new Blob(chunks, { type: 'audio/webm' });
-      const url = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ''));
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      setAudioDataUrl(url);
-      stream.getTracks().forEach((track) => track.stop());
-    };
-    mediaRecorderRef.current = recorder;
-    recorder.start();
-    setIsRecording(true);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      showStatus('Voice recording is not supported on this device.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const url = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        setAudioDataUrl(url);
+        stream.getTracks().forEach((track) => track.stop());
+        showStatus('Voice recording saved.', 'success');
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      showStatus('Voice recording started.', 'success');
+    } catch {
+      showStatus('Unable to start voice recording.');
+    }
   }
 
   function stopRecording() {
+    if (!mediaRecorderRef.current) {
+      showStatus('No active recording.');
+      return;
+    }
     mediaRecorderRef.current?.stop();
     setIsRecording(false);
   }
@@ -896,9 +1397,9 @@ export function TripMasterApp() {
     });
     if (res.ok && res.data) {
       setProfile(res.data);
-      setStatusMessage('Profile updated.');
+      showStatus('Profile updated successfully.', 'success');
     } else {
-      setStatusMessage(res.message ?? 'Profile update failed');
+      showStatus(res.message ?? 'Profile update failed');
     }
   }
 
@@ -917,6 +1418,9 @@ export function TripMasterApp() {
         ...profile,
         profileImageUrl: res.data.generatedUrl,
       });
+      showStatus('AI profile image generated.', 'success');
+    } else {
+      showStatus(res.message ?? 'Failed to generate AI profile image');
     }
   }
 
@@ -935,6 +1439,7 @@ export function TripMasterApp() {
       ...profile,
       profileImageUrl: dataUrl,
     });
+    showStatus('Profile image uploaded. Click "Update Profile" to save.', 'success');
   }
 
   async function loadSupportHistory() {
@@ -960,9 +1465,9 @@ export function TripMasterApp() {
       setSupportTitle('');
       setSupportMessage('');
       await loadSupportHistory();
-      setStatusMessage('Request submitted.');
+      showStatus('Request submitted successfully.', 'success');
     } else {
-      setStatusMessage(res.message ?? 'Failed to submit request');
+      showStatus(res.message ?? 'Failed to submit request');
     }
   }
 
@@ -997,6 +1502,27 @@ export function TripMasterApp() {
     scrollToSection(sectionId);
   }
 
+  function onAccountShortcutClick() {
+    if (nickname) {
+      openMainTab('profile', 'tab-profile-section');
+      return;
+    }
+    setShowAuthPanel(true);
+    scrollToSection('hero-auth-anchor');
+  }
+
+  function onMobileMainTabSelect(tab: TabKey) {
+    setActiveTab(tab);
+    setShowMobileMenu(false);
+    scrollToSection('main-tabs-anchor');
+  }
+
+  function onMobileExtraTabSelect(tab: ExtraTabKey) {
+    setActiveExtraTab(tab);
+    setShowMobileMenu(false);
+    scrollToSection('extra-tabs-anchor');
+  }
+
   const selectedTrip = trips.find((trip) => trip.id === selectedTripId) ?? null;
   const selectedTripTitle = selectedTrip?.title ?? '';
   const canChangePackingPermission = selectedTrip?.role === 'editor';
@@ -1005,11 +1531,11 @@ export function TripMasterApp() {
 
   function updatePackingList(updater: (items: PackingItem[]) => PackingItem[]) {
     if (!activePackingKey) {
-      setStatusMessage('Trip을 먼저 선택하면 여행별 준비물 체크리스트를 사용할 수 있어요.');
+      showStatus('Trip을 먼저 선택하면 여행별 준비물 체크리스트를 사용할 수 있어요.');
       return;
     }
     if (!canEditPacking) {
-      setStatusMessage('Editor only: invited member edit mode가 OFF 상태입니다.');
+      showStatus('Editor only: invited member edit mode가 OFF 상태입니다.');
       return;
     }
     setPackingByTrip((prev) => ({
@@ -1069,7 +1595,7 @@ export function TripMasterApp() {
 
   function syncTemplateToCurrentTrip() {
     if (!activePackingKey) {
-      setStatusMessage('Trip을 먼저 선택해 주세요.');
+      showStatus('Trip을 먼저 선택해 주세요.');
       return;
     }
     const guide = travelPrepGuides[countryCode] ?? travelPrepGuides.DEFAULT;
@@ -1085,6 +1611,7 @@ export function TripMasterApp() {
         }));
       return [...items, ...additions];
     });
+    showStatus('Packing template synced to this trip.', 'success');
   }
 
   const planPrepGuide = travelPrepGuides[countryCode] ?? travelPrepGuides.DEFAULT;
@@ -1093,6 +1620,98 @@ export function TripMasterApp() {
 
   return (
     <div className="tripmaster-shell">
+      {statusToast ? (
+        <div
+          className={`status-toast is-${statusToast.tone}`}
+          role={statusToast.tone === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span>{statusToast.message}</span>
+          <button type="button" className="status-toast-close" onClick={() => setStatusToast(null)} aria-label="Close notification">
+            ✕
+          </button>
+        </div>
+      ) : null}
+      <header className="top-nav-shell">
+        <div className="top-nav-row">
+          <button type="button" className="brand-mark" onClick={() => scrollToSection('main-tabs-anchor')}>
+            ✈️ TripMaster
+          </button>
+          <div className="top-nav-actions">
+            <button type="button" className="account-chip" onClick={onAccountShortcutClick}>
+              <span className="account-chip-icon" aria-hidden>
+                👤
+              </span>
+              <span className="account-chip-text">{nickname ? `Profile · ${nickname}` : 'Login / Profile'}</span>
+            </button>
+            <button
+              type="button"
+              className="mobile-menu-btn"
+              aria-label="Open tab menu"
+              aria-expanded={showMobileMenu}
+              onClick={() => setShowMobileMenu((prev) => !prev)}
+            >
+              ⋮
+            </button>
+          </div>
+        </div>
+        {showMobileMenu ? (
+          <div className="mobile-menu-panel">
+            <p className="mobile-menu-title">Main Tabs</p>
+            <div className="mobile-menu-grid">
+              {mainTabs.map((tab) => (
+                <button
+                  key={`mobile-main-${tab.key}`}
+                  type="button"
+                  className={activeTab === tab.key ? 'mobile-menu-item active' : 'mobile-menu-item'}
+                  onClick={() => onMobileMainTabSelect(tab.key)}
+                >
+                  {copy[tab.key] ?? tab.fallbackLabel}
+                </button>
+              ))}
+            </div>
+            <p className="mobile-menu-title">Extra Tabs</p>
+            <div className="mobile-menu-grid">
+              {extraTabs.map((tab) => (
+                <button
+                  key={`mobile-extra-${tab}`}
+                  type="button"
+                  className={activeExtraTab === tab ? 'mobile-menu-item active' : 'mobile-menu-item'}
+                  onClick={() => onMobileExtraTabSelect(tab)}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        <nav id="main-tabs-anchor" className="main-tabs top-main-tabs">
+          {mainTabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              className={activeTab === tab.key ? 'tab-btn active' : 'tab-btn'}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {copy[tab.key] ?? tab.fallbackLabel}
+            </button>
+          ))}
+        </nav>
+        <nav id="extra-tabs-anchor" className="extra-tabs top-extra-tabs">
+          {extraTabs.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={activeExtraTab === tab ? 'sub-tab active' : 'sub-tab'}
+              onClick={() => setActiveExtraTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </nav>
+      </header>
+
       <header className="hero-header">
         <p className="eyebrow">TripMaster</p>
         <h1>{copy.appTitle}</h1>
@@ -1115,7 +1734,15 @@ export function TripMasterApp() {
           </label>
         </div>
 
-        <AuthPanel supabase={supabase} language={language} currentNickname={nickname} onSignedIn={onSignedIn} onSignedOut={onSignedOut} />
+        <div id="hero-auth-anchor">
+          {showAuthPanel || Boolean(nickname) ? (
+            <AuthPanel supabase={supabase} language={language} currentNickname={nickname} onSignedIn={onSignedIn} onSignedOut={onSignedOut} />
+          ) : (
+            <button type="button" className="btn-secondary auth-open-btn" onClick={() => setShowAuthPanel(true)}>
+              Open login / account panel
+            </button>
+          )}
+        </div>
         {!backendConfigured ? (
           <p className="error-text">Backend is not configured yet. Set real Supabase environment variables to enable save/login.</p>
         ) : null}
@@ -1139,7 +1766,7 @@ export function TripMasterApp() {
             New Trip Title
             <input value={newTripTitle} onChange={(event) => setNewTripTitle(event.target.value)} />
           </label>
-          <button type="button" className="btn-primary" onClick={createTrip} disabled={!nickname}>
+          <button type="button" className="btn-primary" onClick={createTrip}>
             Create Trip
           </button>
         </div>
@@ -1148,8 +1775,26 @@ export function TripMasterApp() {
             Create Invite Link
           </button>
           <input placeholder="Paste invite code" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} />
-          <button type="button" className="btn-secondary" onClick={acceptInvite} disabled={!nickname}>
+          <button type="button" className="btn-secondary" onClick={acceptInvite}>
             Accept Invite
+          </button>
+        </div>
+        <div className="trip-row">
+          <button
+            type="button"
+            className="btn-secondary danger"
+            onClick={deleteSelectedTrip}
+            disabled={!selectedTripId || deletingTrip || deletingAllTrips}
+          >
+            Delete Selected Trip
+          </button>
+          <button
+            type="button"
+            className="btn-secondary danger"
+            onClick={deleteAllTrips}
+            disabled={!trips.length || deletingTrip || deletingAllTrips}
+          >
+            Delete All My Trips
           </button>
         </div>
         <div className="packing-permission-row">
@@ -1169,8 +1814,6 @@ export function TripMasterApp() {
         </div>
         {generatedInviteLink ? <p className="info-text">Invite: {generatedInviteLink}</p> : null}
       </section>
-
-      {statusMessage ? <p className="status">{statusMessage}</p> : null}
 
       <nav className="quick-shortcuts">
         <button type="button" className="shortcut-btn" onClick={() => openExtraTab('plan', 'extra-plan-section')}>
@@ -1197,32 +1840,6 @@ export function TripMasterApp() {
           </span>
           <span>{copy.tripstargram ?? 'Tripstargram'}</span>
         </button>
-      </nav>
-
-      <nav id="main-tabs-anchor" className="main-tabs">
-        {mainTabs.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            className={activeTab === tab.key ? 'tab-btn active' : 'tab-btn'}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {copy[tab.key] ?? tab.fallbackLabel}
-          </button>
-        ))}
-      </nav>
-
-      <nav id="extra-tabs-anchor" className="extra-tabs">
-        {extraTabs.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className={activeExtraTab === tab ? 'sub-tab active' : 'sub-tab'}
-            onClick={() => setActiveExtraTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
       </nav>
 
       {activeTab === 'flight' ? (
@@ -1483,7 +2100,7 @@ export function TripMasterApp() {
                 onChange={(event: ChangeEvent<HTMLInputElement>) => setRecordFiles(event.target.files)}
               />
             </label>
-            <button type="submit" className="btn-primary" disabled={!selectedTripId}>
+            <button type="submit" className="btn-primary">
               Save Record
             </button>
           </form>
@@ -1580,7 +2197,7 @@ export function TripMasterApp() {
               )}
               {audioDataUrl ? <audio controls src={audioDataUrl} /> : <p>No voice memo yet.</p>}
             </div>
-            <button type="submit" className="btn-primary" disabled={!selectedTripId}>
+            <button type="submit" className="btn-primary">
               Save Diary
             </button>
           </form>
@@ -1734,7 +2351,7 @@ export function TripMasterApp() {
                 required={tripstargramMode === 'manual'}
               />
             </label>
-            <button type="submit" className="btn-primary" disabled={!selectedTripId}>
+            <button type="submit" className="btn-primary">
               Create Tripstargram Post
             </button>
           </form>
@@ -1763,7 +2380,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'profile' ? (
-        <section className="card">
+        <section id="tab-profile-section" className="card">
           {profile ? (
             <form onSubmit={saveProfile}>
               <div className="profile-grid">
@@ -2157,7 +2774,7 @@ export function TripMasterApp() {
               </label>
             ))}
           </div>
-          <button type="button" className="btn-primary" onClick={generatePlan} disabled={!selectedTripId}>
+          <button type="button" className="btn-primary" onClick={generatePlan}>
             Generate Itinerary
           </button>
           {planResult ? (

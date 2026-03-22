@@ -17,6 +17,15 @@ const patchSchema = z.object({
   allowMemberPackingEdit: z.boolean().optional(),
 });
 
+const deleteSchema = z
+  .object({
+    tripId: z.string().uuid().optional(),
+    deleteAll: z.boolean().optional(),
+  })
+  .refine((value) => Boolean(value.tripId) || value.deleteAll === true, {
+    message: 'tripId or deleteAll=true is required',
+  });
+
 export async function GET(req: NextRequest) {
   const user = await getRequestUser(req);
   if (!user) {
@@ -172,5 +181,61 @@ export async function PATCH(req: NextRequest) {
       return fail('Invalid payload', 400, { issues: error.flatten() });
     }
     return fail('Failed to update trip', 500);
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await getRequestUser(req);
+    if (!user) {
+      return fail('Unauthorized', 401);
+    }
+
+    const body = deleteSchema.parse(await req.json());
+    const admin = getSupabaseAdminClient();
+
+    if (body.deleteAll) {
+      const { data, error } = await admin
+        .from('trips')
+        .delete()
+        .eq('owner_id', user.profileId)
+        .select('id');
+
+      if (error) {
+        return fail(error.message, 500);
+      }
+
+      return ok({
+        deletedCount: data?.length ?? 0,
+      });
+    }
+
+    const tripId = body.tripId;
+    if (!tripId) {
+      return fail('tripId is required', 400);
+    }
+
+    const { data, error } = await admin
+      .from('trips')
+      .delete()
+      .eq('id', tripId)
+      .eq('owner_id', user.profileId)
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      return fail(error.message, 500);
+    }
+
+    if (!data) {
+      return fail('Only the trip owner can delete this trip', 403);
+    }
+
+    return ok({ deleted: true, tripId: data.id });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return fail('Invalid payload', 400, { issues: error.flatten() });
+    }
+    return fail('Failed to delete trip', 500);
   }
 }
