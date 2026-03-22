@@ -463,9 +463,12 @@ function TopHeroHeader({
   onSettingsClick,
   profileActive,
   settingsActive,
+  nickname,
+  selectedTripTitle,
   autoTranslate,
   onAutoTranslateChange,
-  authContent,
+  onAuthToggle,
+  isAuthOpen,
   backendConfigured,
   onBrandClick,
 }: {
@@ -475,9 +478,12 @@ function TopHeroHeader({
   onSettingsClick: () => void;
   profileActive: boolean;
   settingsActive: boolean;
+  nickname: string | null;
+  selectedTripTitle: string;
   autoTranslate: boolean;
   onAutoTranslateChange: (next: boolean) => void;
-  authContent: ReactNode;
+  onAuthToggle: () => void;
+  isAuthOpen: boolean;
   backendConfigured: boolean;
   onBrandClick: () => void;
 }) {
@@ -496,9 +502,19 @@ function TopHeroHeader({
               Flights, stays, planning, and local info in one premium travel workspace.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <span className="rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">Airline-inspired dashboard</span>
-              <span className="rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">Shared travel journal</span>
-              <span className="rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">Real planning workflow</span>
+              <span className="rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">
+                Current trip: {selectedTripTitle || 'None selected'}
+              </span>
+              <span className="rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">
+                {autoTranslate ? 'Auto-translate on' : 'Auto-translate off'}
+              </span>
+              <button
+                type="button"
+                onClick={onAuthToggle}
+                className="rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur transition hover:bg-white/25"
+              >
+                {nickname ? `Signed in: ${nickname}` : isAuthOpen ? 'Close account panel' : 'Open account panel'}
+              </button>
             </div>
           </div>
 
@@ -526,7 +542,6 @@ function TopHeroHeader({
               <input type="checkbox" checked={autoTranslate} onChange={(event) => onAutoTranslateChange(event.target.checked)} />
               Auto-translate shared content
             </label>
-            <div className="rounded-3xl border border-white/25 bg-white/12 p-3 backdrop-blur-xl">{authContent}</div>
             {!backendConfigured ? (
               <p className="rounded-xl border border-rose-200/40 bg-rose-900/35 px-3 py-2 text-sm text-rose-50">
                 Backend is not configured yet. Set real Supabase environment variables to enable save/login.
@@ -1867,8 +1882,8 @@ export function TripMasterApp() {
   }
 
   function openLoginPanelFromMenu() {
-    setShowAuthPanel(true);
-    scrollToSection('hero-auth-anchor');
+    setShowAuthPanel((prev) => !prev || !nickname);
+    scrollToSection('account-panel-anchor');
   }
 
   function onMainNavSelect(tab: TabKey) {
@@ -1990,6 +2005,9 @@ export function TripMasterApp() {
     planHelperSubTab === 'activities'
       ? placesResponse.places.filter((place) => place.theme === 'activity')
       : placesResponse.places;
+  const selectedPlaceDetail =
+    placesForDisplay.find((place) => selectedPlaceNames.includes(place.name)) ?? placesForDisplay[0] ?? null;
+  const selectedRestaurantDetail = restaurants[0] ?? null;
   const primaryNavTabs = [
     { key: 'flight' as TabKey, label: 'Flight', icon: '✈️' },
     { key: 'hotel' as TabKey, label: 'Hotel', icon: '🏨' },
@@ -2042,27 +2060,14 @@ export function TripMasterApp() {
           onSettingsClick={() => (nickname ? openAccountTab('settings') : openLoginPanelFromMenu())}
           profileActive={activeTab === 'profile'}
           settingsActive={activeTab === 'settings'}
+          nickname={nickname}
+          selectedTripTitle={selectedTripTitle}
           autoTranslate={autoTranslate}
           onAutoTranslateChange={setAutoTranslate}
+          onAuthToggle={openLoginPanelFromMenu}
+          isAuthOpen={showAuthPanel}
           onBrandClick={() => scrollToSection('main-tabs-anchor')}
           backendConfigured={backendConfigured}
-          authContent={
-            <div id="hero-auth-anchor">
-              {showAuthPanel || Boolean(nickname) ? (
-                <AuthPanel
-                  supabase={supabase}
-                  language={language}
-                  currentNickname={nickname}
-                  onSignedIn={onSignedIn}
-                  onSignedOut={onSignedOut}
-                />
-              ) : (
-                <button type="button" className="btn-secondary auth-open-btn" onClick={() => setShowAuthPanel(true)}>
-                  Open login / account panel
-                </button>
-              )}
-            </div>
-          }
         />
       }
       tripWorkspaceSection={
@@ -2182,7 +2187,30 @@ export function TripMasterApp() {
         </div>
       }
       activePage={
-        <>
+        <div className="space-y-5">
+          {showAuthPanel ? (
+            <GlassCard className="max-w-3xl">
+              <div id="account-panel-anchor" className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <SectionEyebrow>Account</SectionEyebrow>
+                    <p className="mt-1 text-sm text-slate-500">Sign in, create account, or manage your current session.</p>
+                  </div>
+                  <button type="button" className="btn-secondary" onClick={() => setShowAuthPanel(false)}>
+                    Close
+                  </button>
+                </div>
+                <AuthPanel
+                  supabase={supabase}
+                  language={language}
+                  currentNickname={nickname}
+                  onSignedIn={onSignedIn}
+                  onSignedOut={onSignedOut}
+                />
+              </div>
+            </GlassCard>
+          ) : null}
+
           {activeTab === 'flight' || activeTab === 'hotel' || activeTab === 'places' || activeTab === 'restaurants' ? (
             <GlassCard className="journey-tools-card">
               <SectionEyebrow>Journey Studio</SectionEyebrow>
@@ -2521,78 +2549,110 @@ export function TripMasterApp() {
           >
             <SubTabBar items={planHelperSubTabItems} active={planHelperSubTab} />
           </PageHeader>
-          <div className="grid three">
-            <label>
-              Country
-              <select value={countryCode} onChange={(event) => setCountryCode(event.target.value)}>
-                {Object.keys(countryCities).map((code) => (
-                  <option key={code}>{code}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              City
-              <select value={placesCity} onChange={(event) => setPlacesCity(event.target.value)}>
-                {(countryCities[countryCode] ?? []).map((city) => (
-                  <option key={city}>{city}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Theme
-              <select value={placesTheme} onChange={(event) => setPlacesTheme(event.target.value as any)}>
-                <option value="all">all</option>
-                <option value="activity">activity</option>
-                <option value="healing">healing</option>
-                <option value="city">city</option>
-              </select>
-            </label>
-          </div>
-          <div className="view-mode">
-            <button type="button" className={placesViewMode === 'list' ? 'btn-secondary active' : 'btn-secondary'} onClick={() => setPlacesViewMode('list')}>
-              {copy.listMode}
-            </button>
-            <button type="button" className={placesViewMode === 'images' ? 'btn-secondary active' : 'btn-secondary'} onClick={() => setPlacesViewMode('images')}>
-              {copy.imageMode}
-            </button>
-          </div>
-
-          {placesViewMode === 'images' ? (
-            <div className="image-grid">
-              {[...placesResponse.heroImages, ...placesResponse.cityImages.map((image) => image.imageUrl)].map((src, idx) => (
-                <img key={`${src}-${idx}`} src={src} alt="destination inspiration" />
-              ))}
-            </div>
-          ) : (
-            <div className="result-list planhelper-card-grid">
-              {placesForDisplay.map((place) => (
-                <article
-                  key={place.id}
-                  className={
-                    planHelperSubTab === 'activities'
-                      ? 'result-card place-card planhelper-card activity-card'
-                      : 'result-card place-card planhelper-card'
-                  }
+          <div className="grid gap-4 xl:grid-cols-12">
+            <div className="space-y-4 xl:col-span-8">
+              <div className="grid three">
+                <label>
+                  Country
+                  <select value={countryCode} onChange={(event) => setCountryCode(event.target.value)}>
+                    {Object.keys(countryCities).map((code) => (
+                      <option key={code}>{code}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  City
+                  <select value={placesCity} onChange={(event) => setPlacesCity(event.target.value)}>
+                    {(countryCities[countryCode] ?? []).map((city) => (
+                      <option key={city}>{city}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Theme
+                  <select value={placesTheme} onChange={(event) => setPlacesTheme(event.target.value as any)}>
+                    <option value="all">all</option>
+                    <option value="activity">activity</option>
+                    <option value="healing">healing</option>
+                    <option value="city">city</option>
+                  </select>
+                </label>
+              </div>
+              <div className="view-mode">
+                <button
+                  type="button"
+                  className={placesViewMode === 'list' ? 'btn-secondary active' : 'btn-secondary'}
+                  onClick={() => setPlacesViewMode('list')}
                 >
-                  <img src={place.imageUrl} alt={place.name} className="thumb" />
-                  <div>
-                    <strong>{place.name}</strong>
-                    <p className="tag-row">
-                      <span className="data-tag">📍 {place.city}</span>
-                      <span className="data-tag">🧭 {place.theme}</span>
-                      <span className="data-tag">⭐ {place.rating}</span>
-                      {planHelperSubTab === 'activities' ? <span className="travel-mode-chip">⏱️ 2-4h</span> : null}
-                    </p>
-                    <p>{place.summary}</p>
-                    <button type="button" className="btn-secondary" onClick={() => savePlace(place)}>
-                      Add to trip
-                    </button>
-                  </div>
-                </article>
-              ))}
-              {placesForDisplay.length === 0 ? <p className="empty-state-text">No saved places yet. Start building your journey.</p> : null}
+                  {copy.listMode}
+                </button>
+                <button
+                  type="button"
+                  className={placesViewMode === 'images' ? 'btn-secondary active' : 'btn-secondary'}
+                  onClick={() => setPlacesViewMode('images')}
+                >
+                  {copy.imageMode}
+                </button>
+              </div>
+
+              {placesViewMode === 'images' ? (
+                <div className="image-grid">
+                  {[...placesResponse.heroImages, ...placesResponse.cityImages.map((image) => image.imageUrl)].map((src, idx) => (
+                    <img key={`${src}-${idx}`} src={src} alt="destination inspiration" />
+                  ))}
+                </div>
+              ) : (
+                <div className="result-list planhelper-card-grid">
+                  {placesForDisplay.map((place) => (
+                    <article
+                      key={place.id}
+                      className={
+                        planHelperSubTab === 'activities'
+                          ? 'result-card place-card planhelper-card activity-card'
+                          : 'result-card place-card planhelper-card'
+                      }
+                    >
+                      <img src={place.imageUrl} alt={place.name} className="thumb" />
+                      <div>
+                        <strong>{place.name}</strong>
+                        <p className="tag-row">
+                          <span className="data-tag">📍 {place.city}</span>
+                          <span className="data-tag">🧭 {place.theme}</span>
+                          <span className="data-tag">⭐ {place.rating}</span>
+                          {planHelperSubTab === 'activities' ? <span className="travel-mode-chip">⏱️ 2-4h</span> : null}
+                        </p>
+                        <p>{place.summary}</p>
+                        <button type="button" className="btn-secondary" onClick={() => savePlace(place)}>
+                          Add to trip
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                  {placesForDisplay.length === 0 ? <p className="empty-state-text">No saved places yet. Start building your journey.</p> : null}
+                </div>
+              )}
             </div>
-          )}
+
+            <aside className="xl:col-span-4">
+              <article className="detail-card glass-card">
+                <h3>{planHelperSubTab === 'activities' ? 'Selected Activity' : 'Selected Place'}</h3>
+                {selectedPlaceDetail ? (
+                  <>
+                    <p className="route-emphasis">{selectedPlaceDetail.name}</p>
+                    <p>{selectedPlaceDetail.summary}</p>
+                    <div className="chip-row">
+                      <span className="status-chip">📍 {selectedPlaceDetail.city}</span>
+                      <span className="travel-mode-chip">Theme: {selectedPlaceDetail.theme}</span>
+                      <span className="status-chip">⭐ {selectedPlaceDetail.rating}</span>
+                    </div>
+                    <p className="workspace-meta">Saved places: {selectedPlaceNames.length}</p>
+                  </>
+                ) : (
+                  <p className="empty-state-text">Select a place card to build your personalized plan panel.</p>
+                )}
+              </article>
+            </aside>
+          </div>
         </section>
       ) : null}
 
@@ -2604,42 +2664,67 @@ export function TripMasterApp() {
           >
             <SubTabBar items={planHelperSubTabItems} active={planHelperSubTab} />
           </PageHeader>
-          <div className="grid two">
-            <label>
-              Country
-              <select value={countryCode} onChange={(event) => setCountryCode(event.target.value)}>
-                {Object.keys(countryCities).map((code) => (
-                  <option key={code}>{code}</option>
+          <div className="grid gap-4 xl:grid-cols-12">
+            <div className="space-y-4 xl:col-span-8">
+              <div className="grid two">
+                <label>
+                  Country
+                  <select value={countryCode} onChange={(event) => setCountryCode(event.target.value)}>
+                    {Object.keys(countryCities).map((code) => (
+                      <option key={code}>{code}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  City
+                  <select value={restaurantsCity} onChange={(event) => setRestaurantsCity(event.target.value)}>
+                    {(availableCities.length ? availableCities : countryCities[countryCode] ?? []).map((city) => (
+                      <option key={city}>{city}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="result-list planhelper-card-grid">
+                {restaurants.map((restaurant) => (
+                  <article key={restaurant.id} className="result-card restaurant-card planhelper-card">
+                    <img src={restaurant.imageUrl} alt={restaurant.name} className="thumb" />
+                    <div>
+                      <strong>{restaurant.name}</strong>
+                      <p className="tag-row">
+                        <span className="data-tag">📍 {restaurant.city}</span>
+                        <span className="data-tag">🍽️ {restaurant.cuisine}</span>
+                        <span className="data-tag">
+                          ⭐ {restaurant.rating} ({restaurant.reviewCount})
+                        </span>
+                        <span className="status-chip">Recommended</span>
+                      </p>
+                      <p>{restaurant.summary}</p>
+                    </div>
+                  </article>
                 ))}
-              </select>
-            </label>
-            <label>
-              City
-              <select value={restaurantsCity} onChange={(event) => setRestaurantsCity(event.target.value)}>
-                {(availableCities.length ? availableCities : countryCities[countryCode] ?? []).map((city) => (
-                  <option key={city}>{city}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <div className="result-list planhelper-card-grid">
-            {restaurants.map((restaurant) => (
-              <article key={restaurant.id} className="result-card restaurant-card planhelper-card">
-                <img src={restaurant.imageUrl} alt={restaurant.name} className="thumb" />
-                <div>
-                  <strong>{restaurant.name}</strong>
-                  <p className="tag-row">
-                    <span className="data-tag">📍 {restaurant.city}</span>
-                    <span className="data-tag">🍽️ {restaurant.cuisine}</span>
-                    <span className="data-tag">
-                      ⭐ {restaurant.rating} ({restaurant.reviewCount})
-                    </span>
-                    <span className="status-chip">Recommended</span>
-                  </p>
-                  <p>{restaurant.summary}</p>
-                </div>
+                {restaurants.length === 0 ? <p className="empty-state-text">No restaurant picks yet. Choose another city.</p> : null}
+              </div>
+            </div>
+
+            <aside className="xl:col-span-4">
+              <article className="detail-card glass-card">
+                <h3>Selected Recommendation</h3>
+                {selectedRestaurantDetail ? (
+                  <>
+                    <p className="route-emphasis">{selectedRestaurantDetail.name}</p>
+                    <p>{selectedRestaurantDetail.summary}</p>
+                    <div className="chip-row">
+                      <span className="status-chip">Cuisine: {selectedRestaurantDetail.cuisine}</span>
+                      <span className="travel-mode-chip">⭐ {selectedRestaurantDetail.rating}</span>
+                      <span className="status-chip">City: {selectedRestaurantDetail.city}</span>
+                    </div>
+                    <p className="workspace-meta">Recommendation cards: {restaurants.length}</p>
+                  </>
+                ) : (
+                  <p className="empty-state-text">Select a city to load curated restaurant cards.</p>
+                )}
               </article>
-            ))}
+            </aside>
           </div>
         </section>
       ) : null}
@@ -3144,51 +3229,73 @@ export function TripMasterApp() {
           >
             <SubTabBar items={planHelperSubTabItems} active={planHelperSubTab} />
           </PageHeader>
-          <div className="result-list transport-route-list planhelper-card-grid">
-            {transportOptions.length === 0 ? <p className="empty-state-text">No transportation route yet. Generate an itinerary first.</p> : null}
-            {transportOptions.map((option) => {
-              const optionKey = `${option.mode}-${option.bookingUrl}`;
-              const isActive = optionKey === (selectedTransport ? `${selectedTransport.mode}-${selectedTransport.bookingUrl}` : '');
-              return (
-                <article
-                  key={optionKey}
-                  className={
-                    isActive
-                      ? 'result-card transport-card route-card planhelper-card active'
-                      : 'result-card transport-card route-card planhelper-card'
-                  }
-                  onClick={() => setSelectedTransportKey(optionKey)}
-                >
-                  <strong>{option.mode}</strong>
-                  <p>{option.reason}</p>
-                  <p>{option.estimatedCost}</p>
+          <div className="grid gap-4 xl:grid-cols-12">
+            <div className="xl:col-span-8">
+              <div className="result-list transport-route-list planhelper-card-grid">
+                {transportOptions.length === 0 ? <p className="empty-state-text">No transportation route yet. Generate an itinerary first.</p> : null}
+                {transportOptions.map((option) => {
+                  const optionKey = `${option.mode}-${option.bookingUrl}`;
+                  const isActive = optionKey === (selectedTransport ? `${selectedTransport.mode}-${selectedTransport.bookingUrl}` : '');
+                  return (
+                    <article
+                      key={optionKey}
+                      className={
+                        isActive
+                          ? 'result-card transport-card route-card planhelper-card active'
+                          : 'result-card transport-card route-card planhelper-card'
+                      }
+                      onClick={() => setSelectedTransportKey(optionKey)}
+                    >
+                      <strong>{option.mode}</strong>
+                      <p>{option.reason}</p>
+                      <p>{option.estimatedCost}</p>
+                      <div className="chip-row">
+                        <span className="travel-mode-chip">🚏 Route</span>
+                        <span className="status-chip">Tap for detail</span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+            <aside className="space-y-4 xl:col-span-4">
+              <article className="detail-card glass-card transport-detail-panel">
+                <h3>Route Detail Panel</h3>
+                {selectedTransport ? (
+                  <>
+                    <p className="route-emphasis">{selectedTransport.mode}</p>
+                    <p>{selectedTransport.reason}</p>
+                    <p>{selectedTransport.estimatedCost}</p>
+                    <label>
+                      Route memo
+                      <input
+                        value={transportMemo}
+                        placeholder="Ex. Buy pass at airport station"
+                        onChange={(event) => setTransportMemo(event.target.value)}
+                      />
+                    </label>
+                    <a href={selectedTransport.bookingUrl} target="_blank" rel="noreferrer">
+                      Open booking
+                    </a>
+                  </>
+                ) : (
+                  <p className="empty-state-text">Select a route card to preview transportation detail.</p>
+                )}
+              </article>
+              {planResult?.budget ? (
+                <article className="summary-card glass-card">
+                  <h3>Budget Snapshot</h3>
+                  <p className="workspace-meta">
+                    Estimated {formatKRW(planResult.budget.estimatedCostKrw)} / Budget {formatKRW(planResult.budget.budgetKrw)}
+                  </p>
                   <div className="chip-row">
-                    <span className="travel-mode-chip">🚏 Route</span>
-                    <span className="status-chip">Tap for detail</span>
+                    <span className="status-chip">Usage {planResult.budget.usagePercent}%</span>
+                    <span className="travel-mode-chip">Over {formatKRW(planResult.budget.overBudgetKrw)}</span>
                   </div>
                 </article>
-              );
-            })}
+              ) : null}
+            </aside>
           </div>
-          {selectedTransport ? (
-            <article className="detail-card glass-card transport-detail-panel">
-              <h3>Route Detail Panel</h3>
-              <p className="route-emphasis">{selectedTransport.mode}</p>
-              <p>{selectedTransport.reason}</p>
-              <p>{selectedTransport.estimatedCost}</p>
-              <label>
-                Route memo
-                <input
-                  value={transportMemo}
-                  placeholder="Ex. Buy pass at airport station"
-                  onChange={(event) => setTransportMemo(event.target.value)}
-                />
-              </label>
-              <a href={selectedTransport.bookingUrl} target="_blank" rel="noreferrer">
-                Open booking
-              </a>
-            </article>
-          ) : null}
           <article className="plan-prep-card">
             <div className="plan-prep-header">
               <strong>
@@ -3586,7 +3693,7 @@ export function TripMasterApp() {
           </div>
         </section>
       ) : null}
-        </>
+        </div>
       }
     />
   );
