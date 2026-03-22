@@ -259,10 +259,81 @@ const demoDiariesStoragePrefix = 'tripmaster-demo-diaries-v1:';
 const tripstargramDraftStoragePrefix = 'tripmaster-tripstargram-drafts-v1:';
 const tripstargramMetaStoragePrefix = 'tripmaster-tripstargram-meta-v1:';
 const tripstargramReactionStoragePrefix = 'tripmaster-tripstargram-reactions-v1:';
+const languageStorageKey = 'tripmaster-language-v1';
 
 const tripstargramReactionOptions = ['❤️', '✈️', '😍', '📍', '🍜', '🌅', '😂'] as const;
 const tripstargramVibePresets = ['Soft memory', 'Bright city', 'Sunset journal', 'Cozy food moment', 'Adventure day', 'Quiet reflection'];
 const tripstargramEffectPresets = ['Warm film', 'Soft fade', 'Vivid daylight', 'Night glow', 'Clean natural'];
+const uiTranslatableTexts = [
+  'Home',
+  'Flight',
+  'Hotel',
+  'Plan',
+  'Information',
+  'Places',
+  'Activities',
+  'Restaurants',
+  'Transportation',
+  'Events / Festival',
+  'Tips',
+  'Aero Dashboard',
+  'Your Ticket to Explore the World',
+  'Premium planning with flight, hotel, planning, and local insight workflows in one destination-focused interface.',
+  'Trip',
+  'Translate',
+  'Profile',
+  'Close',
+  'Account',
+  'Enabled',
+  'Disabled',
+  'No trip selected',
+  'Guest mode',
+  'Select workspace',
+  'Not signed in',
+  'From',
+  'To',
+  'Departure',
+  'Return',
+  'Explore',
+  'Auto-translate',
+  'Backend is not configured yet. Set real Supabase environment variables to enable save/login.',
+  'Journey Studio',
+  'Record · Diary · Tripstargram',
+  'Current Trip',
+  'Choose your trip workspace',
+  'Lock your trip context first, then keep all tools aligned to that single source.',
+  'Select trip',
+  'Select',
+  'Role',
+  'Destination',
+  'Flight mode',
+  'None',
+  'Unset',
+  'Role not selected',
+  'Country not set',
+  'Trip context loaded. You can now manage invites and planning cards.',
+  'Choose a trip to manage invites, packing permissions, and shared history.',
+  'Delete Selected Trip',
+  'Members',
+  'Last update',
+  'Create / Join',
+  'Create a new trip or join instantly with an invite code.',
+  'Create',
+  'Join',
+  'New trip title',
+  'Create Trip',
+  'Paste invite code',
+  'Accept Invite',
+  'Collaboration',
+  'Share planning with tripmates and control editing permissions.',
+  'Create Invite Link',
+  'Invited member packing permissions',
+  'Default is OFF. Turn it ON to let invited members edit.',
+  'Invite link',
+  'Delete All My Trips',
+  'Menu',
+  'PlanHelper',
+] as const;
 
 type TripstargramReactionEmoji = (typeof tripstargramReactionOptions)[number];
 
@@ -667,6 +738,7 @@ function TopHeroHeader({
   returnDate,
   onReturnDateChange,
   onExploreFlight,
+  ui,
 }: {
   language: LanguageCode;
   onLanguageChange: (language: LanguageCode) => void;
@@ -691,6 +763,7 @@ function TopHeroHeader({
   returnDate: string;
   onReturnDateChange: (value: string) => void;
   onExploreFlight: () => void;
+  ui: (text: string) => string;
 }) {
   const heroAirports = airports;
   return (
@@ -705,19 +778,19 @@ function TopHeroHeader({
               ✈ TripMaster
             </button>
             <nav className="hero-airlink-links" aria-label="Hero quick links">
-              <span>Home</span>
-              <span>Flight</span>
-              <span>Hotel</span>
-              <span>Plan</span>
-              <span>Information</span>
+              <span>{ui('Home')}</span>
+              <span>{ui('Flight')}</span>
+              <span>{ui('Hotel')}</span>
+              <span>{ui('Plan')}</span>
+              <span>{ui('Information')}</span>
             </nav>
             <div className="hero-airlink-utils">
               <label className="hero-airlink-language">
                 <span aria-hidden>🌐</span>
                 <select value={language} onChange={(event) => onLanguageChange(event.target.value as LanguageCode)} aria-label="Language">
-                  {languageOrder.map((item) => (
-                    <option key={item.code} value={item.code}>
-                      {item.label}
+                {languageOrder.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.label}
                     </option>
                   ))}
                 </select>
@@ -725,7 +798,7 @@ function TopHeroHeader({
               <HeaderIconButton icon="👤" label="Profile" active={profileActive} onClick={onProfileClick} />
               <HeaderIconButton icon="⚙️" label="Settings" active={settingsActive} onClick={onSettingsClick} />
               <button type="button" className="hero-airlink-auth" onClick={onAuthToggle}>
-                {isAuthOpen ? 'Close' : 'Account'}
+                {isAuthOpen ? ui('Close') : ui('Account')}
               </button>
             </div>
           </div>
@@ -737,28 +810,28 @@ function TopHeroHeader({
                 alt="Airplane in sky"
               />
               <div className="hero-airlink-chip-row">
-                <span>{selectedTripTitle || 'No trip selected'}</span>
-                <span>{nickname ? `@${nickname}` : 'Guest mode'}</span>
+                <span>{selectedTripTitle || ui('No trip selected')}</span>
+                <span>{nickname ? `@${nickname}` : ui('Guest mode')}</span>
               </div>
             </div>
             <div className="hero-airlink-copy">
-              <p className="hero-airlink-kicker">Aero Dashboard</p>
-              <h1>Your Ticket to Explore the World</h1>
+              <p className="hero-airlink-kicker">{ui('Aero Dashboard')}</p>
+              <h1>{ui('Your Ticket to Explore the World')}</h1>
               <p>
-                Premium planning with flight, hotel, planning, and local insight workflows in one destination-focused interface.
+                {ui('Premium planning with flight, hotel, planning, and local insight workflows in one destination-focused interface.')}
               </p>
               <div className="hero-airlink-status">
                 <article>
-                  <small>Trip</small>
-                  <strong>{selectedTripTitle || 'Select workspace'}</strong>
+                  <small>{ui('Trip')}</small>
+                  <strong>{selectedTripTitle || ui('Select workspace')}</strong>
                 </article>
                 <article>
-                  <small>Translate</small>
-                  <strong>{autoTranslate ? 'Enabled' : 'Disabled'}</strong>
+                  <small>{ui('Translate')}</small>
+                  <strong>{autoTranslate ? ui('Enabled') : ui('Disabled')}</strong>
                 </article>
                 <article>
-                  <small>Profile</small>
-                  <strong>{nickname ?? 'Not signed in'}</strong>
+                  <small>{ui('Profile')}</small>
+                  <strong>{nickname ?? ui('Not signed in')}</strong>
                 </article>
               </div>
             </div>
@@ -766,7 +839,7 @@ function TopHeroHeader({
 
           <div className="hero-airlink-searchdock">
             <label className="hero-airlink-field">
-              <span>From</span>
+              <span>{ui('From')}</span>
               <select
                 className="hero-airlink-field-control"
                 value={flightOrigin}
@@ -781,7 +854,7 @@ function TopHeroHeader({
               </select>
             </label>
             <label className="hero-airlink-field">
-              <span>To</span>
+              <span>{ui('To')}</span>
               <select
                 className="hero-airlink-field-control"
                 value={flightDestination}
@@ -796,7 +869,7 @@ function TopHeroHeader({
               </select>
             </label>
             <label className="hero-airlink-field">
-              <span>Departure</span>
+              <span>{ui('Departure')}</span>
               <input
                 type="date"
                 className="hero-airlink-field-control"
@@ -806,7 +879,7 @@ function TopHeroHeader({
               />
             </label>
             <label className="hero-airlink-field">
-              <span>Return</span>
+              <span>{ui('Return')}</span>
               <input
                 type="date"
                 className="hero-airlink-field-control"
@@ -816,17 +889,17 @@ function TopHeroHeader({
               />
             </label>
             <button type="button" className="hero-airlink-searchbtn" onClick={onExploreFlight}>
-              Explore
+              {ui('Explore')}
             </button>
             <label className="hero-airlink-toggle">
               <input type="checkbox" checked={autoTranslate} onChange={(event) => onAutoTranslateChange(event.target.checked)} />
-              Auto-translate
+              {ui('Auto-translate')}
             </label>
           </div>
 
           {!backendConfigured ? (
             <p className="hero-airlink-warning">
-              Backend is not configured yet. Set real Supabase environment variables to enable save/login.
+              {ui('Backend is not configured yet. Set real Supabase environment variables to enable save/login.')}
             </p>
           ) : null}
         </div>
@@ -852,9 +925,18 @@ export function TripMasterApp() {
     }
     return getSupabaseBrowserClient();
   }, [backendConfigured]);
-  const [language, setLanguage] = useState<LanguageCode>('en');
+  const [language, setLanguage] = useState<LanguageCode>(() => {
+    if (typeof window === 'undefined') return 'en';
+    const stored = window.localStorage.getItem(languageStorageKey);
+    if (stored && languageOrder.some((item) => item.code === stored)) {
+      return stored as LanguageCode;
+    }
+    return 'en';
+  });
   const [autoTranslate, setAutoTranslate] = useState(true);
   const copy = t(language);
+  const [uiTextMap, setUiTextMap] = useState<Record<string, string>>({});
+  const ui = (text: string) => (language === 'en' ? text : uiTextMap[text] ?? text);
 
   const [activeTab, setActiveTab] = useState<TabKey>('flight');
   const [activeExtraTab, setActiveExtraTab] = useState<ExtraTabKey>('information');
@@ -1056,11 +1138,42 @@ export function TripMasterApp() {
     setHotelResults(generateHotels(hotelCity, hotelSort));
   }, [hotelCity, hotelSort]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(languageStorageKey, language);
+    document.documentElement.lang = language;
+  }, [language]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (language === 'en') {
+        setUiTextMap({});
+        return;
+      }
+      const pairs = await Promise.all(
+        uiTranslatableTexts.map(async (text) => [text, await translateText(text, language, 'en')] as const)
+      );
+      if (!cancelled) {
+        setUiTextMap(Object.fromEntries(pairs));
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
+
   async function loadProfile() {
     const res = await apiFetch<UserProfile>(supabase, '/api/profile', { method: 'GET' });
     if (res.ok && res.data) {
       setProfile(res.data);
-      setLanguage(res.data.locale);
+      const stored = typeof window !== 'undefined' ? window.localStorage.getItem(languageStorageKey) : null;
+      if (stored && languageOrder.some((item) => item.code === stored)) {
+        setLanguage(stored as LanguageCode);
+      } else {
+        setLanguage(res.data.locale);
+      }
       setNickname(res.data.nickname);
       return true;
     }
@@ -2455,6 +2568,23 @@ export function TripMasterApp() {
     scrollToSection('main-tabs-anchor');
   }
 
+  function handleLanguageChange(nextLanguage: LanguageCode) {
+    if (nextLanguage === language) return;
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(languageStorageKey, nextLanguage);
+    }
+    setLanguage(nextLanguage);
+    if (profile) {
+      setProfile({
+        ...profile,
+        locale: nextLanguage,
+      });
+    }
+    if (typeof window !== 'undefined') {
+      window.setTimeout(() => window.location.reload(), 120);
+    }
+  }
+
   const selectedTrip = trips.find((trip) => trip.id === selectedTripId) ?? null;
   const selectedTripTitle = selectedTrip?.title ?? '';
   const canChangePackingPermission = selectedTrip?.role === 'editor';
@@ -2561,30 +2691,30 @@ export function TripMasterApp() {
     placesForDisplay.find((place) => selectedPlaceNames.includes(place.name)) ?? placesForDisplay[0] ?? null;
   const selectedRestaurantDetail = restaurants[0] ?? null;
   const primaryNavTabs = [
-    { key: 'flight' as TabKey, label: 'Flight', icon: '✈️' },
-    { key: 'hotel' as TabKey, label: 'Hotel', icon: '🏨' },
-    { key: 'places' as TabKey, label: 'PlanHelper', icon: '🧭' },
-    { key: 'restaurants' as TabKey, label: 'Information', icon: 'ℹ️' },
+    { key: 'flight' as TabKey, label: copy.flight, icon: '✈️' },
+    { key: 'hotel' as TabKey, label: copy.hotel, icon: '🏨' },
+    { key: 'places' as TabKey, label: ui('PlanHelper'), icon: '🧭' },
+    { key: 'restaurants' as TabKey, label: ui('Information'), icon: 'ℹ️' },
   ];
   const activePrimaryTab: TabKey = ['flight', 'hotel', 'places', 'restaurants'].includes(activeTab) ? activeTab : 'flight';
   const planHelperSubTabItems = [
-    { key: 'places', label: 'Places', icon: '📍', onClick: () => setPlanHelperSubTab('places') },
+    { key: 'places', label: ui('Places'), icon: '📍', onClick: () => setPlanHelperSubTab('places') },
     {
       key: 'activities',
-      label: 'Activities',
+      label: ui('Activities'),
       icon: '🧗',
       onClick: () => {
         setPlanHelperSubTab('activities');
         setPlacesTheme('activity');
       },
     },
-    { key: 'restaurants', label: 'Restaurants', icon: '🍽️', onClick: () => setPlanHelperSubTab('restaurants') },
-    { key: 'transportation', label: 'Transportation', icon: '🚄', onClick: () => setPlanHelperSubTab('transportation') },
+    { key: 'restaurants', label: ui('Restaurants'), icon: '🍽️', onClick: () => setPlanHelperSubTab('restaurants') },
+    { key: 'transportation', label: ui('Transportation'), icon: '🚄', onClick: () => setPlanHelperSubTab('transportation') },
   ];
   const informationSubTabItems = [
-    { key: 'information', label: 'Information', icon: '🌍', onClick: () => setInformationSubTab('information') },
-    { key: 'event', label: 'Events / Festival', icon: '🎫', onClick: () => setInformationSubTab('event') },
-    { key: 'tips', label: 'Tips', icon: '💬', onClick: () => setInformationSubTab('tips') },
+    { key: 'information', label: ui('Information'), icon: '🌍', onClick: () => setInformationSubTab('information') },
+    { key: 'event', label: ui('Events / Festival'), icon: '🎫', onClick: () => setInformationSubTab('event') },
+    { key: 'tips', label: ui('Tips'), icon: '💬', onClick: () => setInformationSubTab('tips') },
   ];
   const selectedTripstargramDiary = getSelectedTripstargramDiary();
   const tripstargramEditorTags = Array.from(new Set([...tripstargramSuggestedTags, ...parseTagInput(tripstargramCustomTags)])).slice(0, 10);
@@ -2621,7 +2751,7 @@ export function TripMasterApp() {
       topHeroHeader={
         <TopHeroHeader
           language={language}
-          onLanguageChange={setLanguage}
+          onLanguageChange={handleLanguageChange}
           onProfileClick={() => (nickname ? openAccountTab('profile') : openLoginPanelFromMenu())}
           onSettingsClick={() => (nickname ? openAccountTab('settings') : openLoginPanelFromMenu())}
           profileActive={activeTab === 'profile'}
@@ -2643,19 +2773,20 @@ export function TripMasterApp() {
           returnDate={returnDate}
           onReturnDateChange={setReturnDate}
           onExploreFlight={() => openMainTab('flight', 'main-tabs-anchor')}
+          ui={ui}
         />
       }
       tripWorkspaceSection={
         <TripWorkspaceSection>
           <div className="grid gap-4 lg:grid-cols-12">
             <GlassCard className="lg:col-span-4 workspace-current-card">
-              <SectionEyebrow>Current Trip</SectionEyebrow>
-              <h2 className="mt-2 text-xl font-semibold text-slate-900">{selectedTripTitle || 'Choose your trip workspace'}</h2>
-              <p className="mt-1 text-sm text-slate-500">Lock your trip context first, then keep all tools aligned to that single source.</p>
+              <SectionEyebrow>{ui('Current Trip')}</SectionEyebrow>
+              <h2 className="mt-2 text-xl font-semibold text-slate-900">{selectedTripTitle || ui('Choose your trip workspace')}</h2>
+              <p className="mt-1 text-sm text-slate-500">{ui('Lock your trip context first, then keep all tools aligned to that single source.')}</p>
               <label className="mt-4 block text-sm text-slate-600">
-                Select trip
+                {ui('Select trip')}
                 <select className="mt-2 w-full" value={selectedTripId} onChange={(event) => setSelectedTripId(event.target.value)}>
-                  <option value="">Select</option>
+                  <option value="">{ui('Select')}</option>
                   {trips.map((trip) => (
                     <option key={trip.id} value={trip.id}>
                       {trip.title} ({trip.role})
@@ -2664,19 +2795,19 @@ export function TripMasterApp() {
                 </select>
               </label>
               <div className="mt-4 space-y-2">
-                <MiniInfo label="Role" value={selectedTrip ? selectedTrip.role.toUpperCase() : 'None'} />
-                <MiniInfo label="Destination" value={selectedTrip?.destinationCountry ?? 'Unset'} />
-                <MiniInfo label="Flight mode" value={flightTripType} />
+                <MiniInfo label={ui('Role')} value={selectedTrip ? selectedTrip.role.toUpperCase() : ui('None')} />
+                <MiniInfo label={ui('Destination')} value={selectedTrip?.destinationCountry ?? ui('Unset')} />
+                <MiniInfo label={ui('Flight mode')} value={flightTripType} />
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Chip>{selectedTrip ? selectedTrip.role.toUpperCase() : 'Role not selected'}</Chip>
-                <Chip>{selectedTrip ? selectedTrip.destinationCountry ?? 'Country not set' : 'Country not set'}</Chip>
+                <Chip>{selectedTrip ? selectedTrip.role.toUpperCase() : ui('Role not selected')}</Chip>
+                <Chip>{selectedTrip ? selectedTrip.destinationCountry ?? ui('Country not set') : ui('Country not set')}</Chip>
                 <Chip>{flightTripType}</Chip>
               </div>
               <p className="mt-3 text-sm text-slate-500">
                 {selectedTrip
-                  ? 'Trip context loaded. You can now manage invites and planning cards.'
-                  : 'Choose a trip to manage invites, packing permissions, and shared history.'}
+                  ? ui('Trip context loaded. You can now manage invites and planning cards.')
+                  : ui('Choose a trip to manage invites, packing permissions, and shared history.')}
               </p>
               <button
                 type="button"
@@ -2684,27 +2815,27 @@ export function TripMasterApp() {
                 onClick={deleteSelectedTrip}
                 disabled={!selectedTripId || deletingTrip || deletingAllTrips}
               >
-                Delete Selected Trip
+                {ui('Delete Selected Trip')}
               </button>
             </GlassCard>
 
             <GlassCard className="lg:col-span-5 workspace-create-card">
-              <SectionEyebrow>Create / Join</SectionEyebrow>
-              <p className="mt-1 text-sm text-slate-500">Create a new trip or join instantly with an invite code.</p>
+              <SectionEyebrow>{ui('Create / Join')}</SectionEyebrow>
+              <p className="mt-1 text-sm text-slate-500">{ui('Create a new trip or join instantly with an invite code.')}</p>
               <div className="mt-4 space-y-3">
                 <div className="rounded-2xl border border-sky-100 bg-white/80 p-3 shadow-[0_8px_18px_rgba(15,70,126,0.08)]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-700/75">Create</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-700/75">{ui('Create')}</p>
                   <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-                    <input value={newTripTitle} onChange={(event) => setNewTripTitle(event.target.value)} placeholder="New trip title" />
-                    <PrimaryButton onClick={createTrip}>Create Trip</PrimaryButton>
+                    <input value={newTripTitle} onChange={(event) => setNewTripTitle(event.target.value)} placeholder={ui('New trip title')} />
+                    <PrimaryButton onClick={createTrip}>{ui('Create Trip')}</PrimaryButton>
                   </div>
                 </div>
                 <div className="rounded-2xl border border-sky-100 bg-white/80 p-3 shadow-[0_8px_18px_rgba(15,70,126,0.08)]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-700/75">Join</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-700/75">{ui('Join')}</p>
                   <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-                    <input placeholder="Paste invite code" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} />
+                    <input placeholder={ui('Paste invite code')} value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} />
                     <button type="button" className="btn-secondary" onClick={acceptInvite}>
-                      Accept Invite
+                      {ui('Accept Invite')}
                     </button>
                   </div>
                 </div>
@@ -2712,13 +2843,13 @@ export function TripMasterApp() {
             </GlassCard>
 
             <GlassCard className="lg:col-span-3 workspace-collab-card">
-              <SectionEyebrow>Collaboration</SectionEyebrow>
-              <p className="mt-1 text-sm text-slate-500">Share planning with tripmates and control editing permissions.</p>
+              <SectionEyebrow>{ui('Collaboration')}</SectionEyebrow>
+              <p className="mt-1 text-sm text-slate-500">{ui('Share planning with tripmates and control editing permissions.')}</p>
               <button type="button" className="btn-primary mt-4 w-full" onClick={createInvite} disabled={!nickname || !selectedTripId}>
-                Create Invite Link
+                {ui('Create Invite Link')}
               </button>
               <div className="mt-4 rounded-2xl border border-sky-100 bg-white/86 p-3 shadow-[0_8px_18px_rgba(15,70,126,0.07)]">
-                <p className="text-sm font-semibold text-slate-800">Invited member packing permissions</p>
+                <p className="text-sm font-semibold text-slate-800">{ui('Invited member packing permissions')}</p>
                 <label className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-slate-700">
                   <input
                     type="checkbox"
@@ -2728,11 +2859,11 @@ export function TripMasterApp() {
                   />
                   <span>{selectedTrip?.allowMemberPackingEdit ? 'ON' : 'OFF'}</span>
                 </label>
-                <p className="mt-1 text-xs text-slate-500">Default is OFF. Turn it ON to let invited members edit.</p>
+                <p className="mt-1 text-xs text-slate-500">{ui('Default is OFF. Turn it ON to let invited members edit.')}</p>
               </div>
               {generatedInviteLink ? (
                 <p className="info-text mt-3">
-                  Invite link
+                  {ui('Invite link')}
                   <br />
                   {generatedInviteLink}
                 </p>
@@ -2743,7 +2874,7 @@ export function TripMasterApp() {
                 onClick={deleteAllTrips}
                 disabled={!trips.length || deletingTrip || deletingAllTrips}
               >
-                Delete All My Trips
+                {ui('Delete All My Trips')}
               </button>
             </GlassCard>
           </div>
@@ -2754,8 +2885,8 @@ export function TripMasterApp() {
           <PrimaryTabBar tabs={primaryNavTabs} active={activePrimaryTab} onSelect={onMainNavSelect} />
           <div className="rounded-3xl border border-white/60 bg-white/78 p-4 shadow-[0_10px_35px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Journey Studio</p>
-              <span className="text-xs text-slate-500">Record · Diary · Tripstargram</span>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{ui('Journey Studio')}</p>
+              <span className="text-xs text-slate-500">{ui('Record · Diary · Tripstargram')}</span>
             </div>
             <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
               <button
@@ -2766,7 +2897,7 @@ export function TripMasterApp() {
                 )}
                 onClick={() => openMainTab('record', 'tab-record-section')}
               >
-                🧳 Record
+                🧳 {copy.record}
               </button>
               <button
                 type="button"
@@ -2792,7 +2923,7 @@ export function TripMasterApp() {
           </div>
           {showMobileMenu ? (
             <div className="rounded-3xl border border-white/60 bg-white/75 p-4 shadow-[0_10px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl md:hidden">
-              <p className="mb-2 text-xs uppercase tracking-[0.2em] text-slate-400">Menu</p>
+              <p className="mb-2 text-xs uppercase tracking-[0.2em] text-slate-400">{ui('Menu')}</p>
               <div className="grid grid-cols-2 gap-2">
                 {mainTabs.map((tab) => (
                   <button
@@ -2804,7 +2935,14 @@ export function TripMasterApp() {
                     )}
                     onClick={() => onMobileMainTabSelect(tab.key)}
                   >
-                    {tab.icon} {tab.shortLabel}
+                    {tab.icon}{' '}
+                    {tab.key === 'flight'
+                      ? copy.flight
+                      : tab.key === 'hotel'
+                        ? copy.hotel
+                        : tab.key === 'places'
+                          ? ui('PlanHelper')
+                          : ui('Information')}
                   </button>
                 ))}
               </div>
@@ -2818,7 +2956,7 @@ export function TripMasterApp() {
               aria-expanded={showMobileMenu}
               onClick={() => setShowMobileMenu((prev) => !prev)}
             >
-              Menu {showMobileMenu ? '▲' : '▼'}
+              {ui('Menu')} {showMobileMenu ? '▲' : '▼'}
             </button>
           </div>
         </div>
