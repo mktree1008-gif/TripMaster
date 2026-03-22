@@ -60,6 +60,14 @@ interface PackingItem {
 }
 
 const weatherEmojiOptions = ['☀️', '⛅', '🌧️', '❄️', '🌩️', '🌫️'];
+const weatherEmojiLabels: Record<string, string> = {
+  '☀️': 'Sunny',
+  '⛅': 'Partly cloudy',
+  '🌧️': 'Rainy',
+  '❄️': 'Snowy',
+  '🌩️': 'Stormy',
+  '🌫️': 'Foggy',
+};
 const cityToAirportMap: Record<string, string> = {
   Seoul: 'ICN',
   Tokyo: 'NRT',
@@ -88,17 +96,18 @@ function formatKRW(value: number) {
   return `₩${new Intl.NumberFormat('ko-KR').format(value)}`;
 }
 
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 async function filesToDataUrls(files: FileList | null) {
   if (!files || files.length === 0) return [];
-  const tasks = Array.from(files).map(
-    (file) =>
-      new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ''));
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      })
-  );
+  const tasks = Array.from(files).map((file) => readFileAsDataUrl(file));
   return Promise.all(tasks);
 }
 
@@ -348,6 +357,7 @@ export function TripMasterApp() {
   const [diaryWeatherLabel, setDiaryWeatherLabel] = useState<string | null>(null);
   const [diaryContent, setDiaryContent] = useState('');
   const [diaryFiles, setDiaryFiles] = useState<FileList | null>(null);
+  const [diaryImagePreviews, setDiaryImagePreviews] = useState<string[]>([]);
   const [diaries, setDiaries] = useState<DiaryEntry[]>([]);
   const [translatedDiaryContent, setTranslatedDiaryContent] = useState<Record<string, string>>({});
   const [tripstargramPosts, setTripstargramPosts] = useState<TripstargramPost[]>([]);
@@ -1196,6 +1206,7 @@ export function TripMasterApp() {
       setDiaryContent('');
       setAudioDataUrl(null);
       setDiaryFiles(null);
+      setDiaryImagePreviews([]);
       showStatus('Demo mode: diary saved locally.');
       return;
     }
@@ -1220,6 +1231,7 @@ export function TripMasterApp() {
       setDiaryContent('');
       setAudioDataUrl(null);
       setDiaryFiles(null);
+      setDiaryImagePreviews([]);
       await loadDiaries();
       showStatus('Diary saved successfully.', 'success');
     } else {
@@ -1337,6 +1349,28 @@ export function TripMasterApp() {
       showStatus('Weather updated automatically.', 'success');
     } else {
       showStatus('Failed to load weather automatically.');
+    }
+  }
+
+  async function onDiaryFilesChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = event.target.files;
+    setDiaryFiles(files);
+    if (!files || files.length === 0) {
+      setDiaryImagePreviews([]);
+      return;
+    }
+
+    const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
+      setDiaryImagePreviews([]);
+      return;
+    }
+
+    try {
+      const previews = await Promise.all(imageFiles.map((file) => readFileAsDataUrl(file)));
+      setDiaryImagePreviews(previews);
+    } catch {
+      setDiaryImagePreviews([]);
     }
   }
 
@@ -2259,13 +2293,23 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'diary' ? (
-        <section id="tab-diary-section" className="card">
-          <form onSubmit={saveDiary}>
+        <section id="tab-diary-section" className="card diary-section">
+          <div className="diary-intro">
+            <h2>Diary</h2>
+            <p>Capture today with a cozy memory card, not a boring form.</p>
+          </div>
+          <form onSubmit={saveDiary} className="diary-form-card">
             <label>
               Title
-              <input value={diaryTitle} onChange={(event) => setDiaryTitle(event.target.value)} required />
+              <input
+                className="diary-input"
+                value={diaryTitle}
+                onChange={(event) => setDiaryTitle(event.target.value)}
+                placeholder="My warm travel moment"
+                required
+              />
             </label>
-            <div className="grid three">
+            <div className="grid three diary-meta-grid">
               <label>
                 Date
                 <input type="date" value={diaryDate} onChange={(event) => setDiaryDate(event.target.value)} />
@@ -2287,15 +2331,27 @@ export function TripMasterApp() {
                 </select>
               </label>
             </div>
-            <div className="grid two">
-              <button type="button" className="btn-secondary" onClick={autoWeather}>
+            <div className="grid two diary-weather-row">
+              <button type="button" className="btn-secondary diary-weather-btn" onClick={autoWeather}>
                 Auto weather (Open-Meteo)
               </button>
-              <p>{diaryWeatherLabel ?? 'Weather label will appear here.'}</p>
+              <div className="diary-weather-display">
+                <strong>
+                  {diaryWeatherEmoji} {weatherEmojiLabels[diaryWeatherEmoji] ?? 'Weather'}
+                </strong>
+                <p>{diaryWeatherLabel ?? 'Pick weather manually or auto-fill from Open-Meteo.'}</p>
+              </div>
             </div>
             <label>
               Diary text
-              <textarea rows={5} value={diaryContent} onChange={(event) => setDiaryContent(event.target.value)} required />
+              <textarea
+                className="diary-paper-textarea"
+                rows={6}
+                value={diaryContent}
+                onChange={(event) => setDiaryContent(event.target.value)}
+                placeholder="Write today's journey like a postcard to yourself..."
+                required
+              />
             </label>
             <label>
               Photo / Video attachments
@@ -2303,26 +2359,34 @@ export function TripMasterApp() {
                 type="file"
                 multiple
                 accept="image/*,video/*"
-                onChange={(event: ChangeEvent<HTMLInputElement>) => setDiaryFiles(event.target.files)}
+                onChange={onDiaryFilesChange}
               />
             </label>
-            <div className="grid two">
+            {diaryImagePreviews.length ? (
+              <div className="diary-preview-grid">
+                {diaryImagePreviews.map((src, idx) => (
+                  <img key={`${src}-${idx}`} src={src} alt={`Diary preview ${idx + 1}`} />
+                ))}
+              </div>
+            ) : null}
+            <div className="grid two diary-voice-row">
               {!isRecording ? (
-                <button type="button" className="btn-secondary" onClick={startRecording}>
-                  Start Voice Recording
+                <button type="button" className="btn-secondary diary-voice-btn" onClick={startRecording}>
+                  🎙️ Start Voice Recording
                 </button>
               ) : (
-                <button type="button" className="btn-secondary danger" onClick={stopRecording}>
-                  Stop Recording
+                <button type="button" className="btn-secondary danger diary-voice-btn is-recording" onClick={stopRecording}>
+                  ⏹ Stop Recording
                 </button>
               )}
               {audioDataUrl ? <audio controls src={audioDataUrl} /> : <p>No voice memo yet.</p>}
             </div>
-            <button type="submit" className="btn-primary">
-              Save Diary
+            <button type="submit" className="btn-primary diary-save-btn">
+              Save today ✨
             </button>
           </form>
 
+          <h3 className="diary-list-title">Saved Diary Cards</h3>
           <div className="result-list">
             {diaries.map((diary) => {
               const diaryJobs = musicJobs.filter((job) => job.diaryId === diary.id);
