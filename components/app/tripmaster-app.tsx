@@ -2690,6 +2690,44 @@ export function TripMasterApp() {
       primaryTabBar={
         <div id="main-tabs-anchor" className="space-y-3">
           <PrimaryTabBar tabs={primaryNavTabs} active={activePrimaryTab} onSelect={onMainNavSelect} />
+          <div className="rounded-3xl border border-white/60 bg-white/78 p-4 shadow-[0_10px_35px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Journey Studio</p>
+              <span className="text-xs text-slate-500">Record · Diary · Tripstargram</span>
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <button
+                type="button"
+                className={cn(
+                  'rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50',
+                  activeTab === 'record' && 'bg-slate-900 text-white'
+                )}
+                onClick={() => openMainTab('record', 'tab-record-section')}
+              >
+                🧳 Record
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50',
+                  activeTab === 'diary' && 'bg-slate-900 text-white'
+                )}
+                onClick={() => openMainTab('diary', 'tab-diary-section')}
+              >
+                📔 {copy.diary}
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50',
+                  activeTab === 'tripstargram' && 'bg-slate-900 text-white'
+                )}
+                onClick={() => openMainTab('tripstargram', 'tab-tripstargram-section')}
+              >
+                📸 {copy.tripstargram ?? 'Tripstargram'}
+              </button>
+            </div>
+          </div>
           {showMobileMenu ? (
             <div className="rounded-3xl border border-white/60 bg-white/75 p-4 shadow-[0_10px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl md:hidden">
               <p className="mb-2 text-xs uppercase tracking-[0.2em] text-slate-400">Menu</p>
