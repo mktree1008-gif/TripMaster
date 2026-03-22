@@ -9,7 +9,7 @@ import { translateText } from '@/lib/translate-client';
 interface CommentsThreadProps {
   supabase: SupabaseClient;
   tripId: string;
-  targetType: 'diary' | 'record' | 'music';
+  targetType: 'diary' | 'record' | 'music' | 'tripstargram';
   targetId: string;
   language: LanguageCode;
   autoTranslate: boolean;

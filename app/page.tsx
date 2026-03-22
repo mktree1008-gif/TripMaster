@@ -1,5 +1,5 @@
-import { TripMasterApp } from '@/components/app/tripmaster-app';
+import { MobileOnboardingGate } from '@/components/onboarding/mobile-onboarding-gate';
 
 export default function HomePage() {
-  return <TripMasterApp />;
+  return <MobileOnboardingGate />;
 }

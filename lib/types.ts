@@ -1,4 +1,37 @@
-export type LanguageCode = 'en' | 'ko' | 'zh' | 'ja' | 'fr' | 'de';
+export type LanguageCode =
+  | 'en'
+  | 'ko'
+  | 'zh'
+  | 'ja'
+  | 'fr'
+  | 'de'
+  | 'es'
+  | 'pt'
+  | 'it'
+  | 'ru'
+  | 'ar'
+  | 'hi'
+  | 'id'
+  | 'tr'
+  | 'nl'
+  | 'pl'
+  | 'vi'
+  | 'th'
+  | 'ms'
+  | 'sv'
+  | 'no'
+  | 'da'
+  | 'fi'
+  | 'cs'
+  | 'hu'
+  | 'ro'
+  | 'uk'
+  | 'el'
+  | 'he'
+  | 'bn'
+  | 'ur'
+  | 'fa'
+  | 'ta';
 
 export type TabKey =
   | 'flight'
@@ -133,7 +166,7 @@ export interface RecordEntry {
 export interface CommentEntry {
   id: string;
   tripId: string;
-  targetType: 'diary' | 'record' | 'music';
+  targetType: 'diary' | 'record' | 'music' | 'tripstargram';
   targetId: string;
   content: string;
   emoji: string | null;

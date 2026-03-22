@@ -37,7 +37,7 @@ export default function AuthCallbackPage() {
         }),
       });
 
-      router.replace('/');
+      router.replace('/app');
     };
     run();
   }, [router]);
