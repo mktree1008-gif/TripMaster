@@ -1952,9 +1952,10 @@ export function TripMasterApp() {
     });
 
     if (res.ok && res.data) {
+      const createdPost = res.data;
       setTripstargramPostMeta((prev) => ({
         ...prev,
-        [res.data.id]: {
+        [createdPost.id]: {
           collaborators: tripstargramCoEditors,
           vibe: tripstargramVibe,
           effect: tripstargramEffect,
