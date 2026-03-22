@@ -272,12 +272,11 @@ export function TripMasterApp() {
     null
   );
   const [showAuthPanel, setShowAuthPanel] = useState(false);
-  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [updatingPackingPermission, setUpdatingPackingPermission] = useState(false);
   const [deletingTrip, setDeletingTrip] = useState(false);
   const [deletingAllTrips, setDeletingAllTrips] = useState(false);
-  const [planHelperSubTab, setPlanHelperSubTab] = useState<'places' | 'activities' | 'restaurants' | 'transportation' | 'plan'>(
+  const [planHelperSubTab, setPlanHelperSubTab] = useState<'places' | 'activities' | 'restaurants' | 'transportation'>(
     'places'
   );
   const [informationSubTab, setInformationSubTab] = useState<'information' | 'event' | 'tips'>('information');
@@ -1529,7 +1528,6 @@ export function TripMasterApp() {
   function openMainTab(tab: TabKey, sectionId = 'main-tabs-anchor') {
     setActiveTab(tab);
     setShowMobileMenu(false);
-    setShowAccountMenu(false);
     scrollToSection(sectionId);
   }
 
@@ -1537,23 +1535,16 @@ export function TripMasterApp() {
     setActiveExtraTab(tab);
     if (tab === 'plan' || tab === 'transportation') {
       setActiveTab('places');
-      setPlanHelperSubTab(tab === 'plan' ? 'plan' : 'transportation');
+      setPlanHelperSubTab('transportation');
     } else if (tab === 'information' || tab === 'event' || tab === 'tips') {
       setActiveTab('restaurants');
       setInformationSubTab(tab === 'information' ? 'information' : tab === 'event' ? 'event' : 'tips');
     }
     setShowMobileMenu(false);
-    setShowAccountMenu(false);
     scrollToSection(sectionId);
   }
 
-  function onAccountShortcutClick() {
-    setShowAccountMenu((prev) => !prev);
-    setShowMobileMenu(false);
-  }
-
   function openAccountTab(tab: 'profile' | 'settings') {
-    setShowAccountMenu(false);
     if (tab === 'profile') {
       openMainTab('profile', 'tab-profile-section');
       return;
@@ -1562,7 +1553,6 @@ export function TripMasterApp() {
   }
 
   function openLoginPanelFromMenu() {
-    setShowAccountMenu(false);
     setShowAuthPanel(true);
     scrollToSection('hero-auth-anchor');
   }
@@ -1570,7 +1560,6 @@ export function TripMasterApp() {
   function onMainNavSelect(tab: TabKey) {
     setActiveTab(tab);
     setShowMobileMenu(false);
-    setShowAccountMenu(false);
     if (tab === 'places' && !planHelperSubTab) {
       setPlanHelperSubTab('places');
     }
@@ -1705,11 +1694,33 @@ export function TripMasterApp() {
             ✈️ TripMaster
           </button>
           <div className="top-nav-actions">
-            <button type="button" className="account-chip" onClick={onAccountShortcutClick}>
-              <span className="account-chip-icon" aria-hidden>
-                👤
-              </span>
-              <span className="account-chip-text">{nickname ? `Account · ${nickname}` : 'Login / Account'}</span>
+            <label className="utility-language">
+              <span aria-hidden>🌐</span>
+              <select value={language} onChange={(event) => setLanguage(event.target.value as LanguageCode)} aria-label="Language">
+                {languageOrder.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className={activeTab === 'profile' ? 'utility-icon-btn active' : 'utility-icon-btn'}
+              onClick={() => (nickname ? openAccountTab('profile') : openLoginPanelFromMenu())}
+              aria-label="Profile"
+            >
+              <span aria-hidden>👤</span>
+              <span className="utility-btn-text">Profile</span>
+            </button>
+            <button
+              type="button"
+              className={activeTab === 'settings' ? 'utility-icon-btn active' : 'utility-icon-btn'}
+              onClick={() => (nickname ? openAccountTab('settings') : openLoginPanelFromMenu())}
+              aria-label="Settings"
+            >
+              <span aria-hidden>⚙️</span>
+              <span className="utility-btn-text">Settings</span>
             </button>
             <button
               type="button"
@@ -1722,29 +1733,6 @@ export function TripMasterApp() {
             </button>
           </div>
         </div>
-        {showAccountMenu ? (
-          <div className="account-menu-panel">
-            <button type="button" className="account-menu-item" onClick={openLoginPanelFromMenu}>
-              Login / Account
-            </button>
-            <button
-              type="button"
-              className="account-menu-item"
-              onClick={() => openAccountTab('profile')}
-              disabled={!nickname}
-            >
-              Profile
-            </button>
-            <button
-              type="button"
-              className="account-menu-item"
-              onClick={() => openAccountTab('settings')}
-              disabled={!nickname}
-            >
-              Settings
-            </button>
-          </div>
-        ) : null}
         {showMobileMenu ? (
           <div className="mobile-menu-panel">
             <p className="mobile-menu-title">Menu</p>
@@ -1780,23 +1768,15 @@ export function TripMasterApp() {
         <p className="eyebrow">TripMaster</p>
         <h1>{copy.appTitle}</h1>
         <p>{copy.appSubtitle}</p>
-
-        <div className="toolbar">
-          <label>
-            Language
-            <select value={language} onChange={(event) => setLanguage(event.target.value as LanguageCode)}>
-              {languageOrder.map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="translate-toggle">
-            <input type="checkbox" checked={autoTranslate} onChange={(event) => setAutoTranslate(event.target.checked)} />
-            Auto-translate shared content
-          </label>
+        <div className="hero-highlights">
+          <span>✈️ Airline-style planning workspace</span>
+          <span>🚄 Route-aware itinerary assistance</span>
+          <span>📍 Curated discovery with trusted structure</span>
         </div>
+        <label className="hero-translate-toggle">
+          <input type="checkbox" checked={autoTranslate} onChange={(event) => setAutoTranslate(event.target.checked)} />
+          Auto-translate shared content
+        </label>
 
         <div id="hero-auth-anchor">
           {showAuthPanel || Boolean(nickname) ? (
@@ -1813,98 +1793,109 @@ export function TripMasterApp() {
       </header>
 
       <section className="card trip-card">
-        <h2>🧾 Trip Workspace</h2>
-        <div className="trip-row">
-          <label>
-            Trip
-            <select value={selectedTripId} onChange={(event) => setSelectedTripId(event.target.value)}>
-              <option value="">Select</option>
-              {trips.map((trip) => (
-                <option key={trip.id} value={trip.id}>
-                  {trip.title} ({trip.role})
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            New Trip Title
-            <input value={newTripTitle} onChange={(event) => setNewTripTitle(event.target.value)} />
-          </label>
-          <button type="button" className="btn-primary" onClick={createTrip}>
-            Create Trip
-          </button>
+        <div className="workspace-header">
+          <h2>🧾 Trip Workspace</h2>
+          <p>Manage your current trip, create or join trips, and collaboration permissions in one premium workspace.</p>
         </div>
-        <div className="trip-row">
-          <button type="button" className="btn-secondary" onClick={createInvite} disabled={!nickname || !selectedTripId}>
-            Create Invite Link
-          </button>
-          <input placeholder="Paste invite code" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} />
-          <button type="button" className="btn-secondary" onClick={acceptInvite}>
-            Accept Invite
-          </button>
+        <div className="workspace-grid">
+          <article className="workspace-panel">
+            <h3>Current Trip</h3>
+            <label>
+              Select trip
+              <select value={selectedTripId} onChange={(event) => setSelectedTripId(event.target.value)}>
+                <option value="">Select</option>
+                {trips.map((trip) => (
+                  <option key={trip.id} value={trip.id}>
+                    {trip.title} ({trip.role})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="workspace-meta">
+              {selectedTrip
+                ? `Role: ${selectedTrip.role.toUpperCase()} · Destination: ${selectedTrip.destinationCountry ?? 'Not synced yet'}`
+                : 'Choose a trip to manage invites, packing permissions, and shared history.'}
+            </p>
+            <button
+              type="button"
+              className="btn-secondary danger"
+              onClick={deleteSelectedTrip}
+              disabled={!selectedTripId || deletingTrip || deletingAllTrips}
+            >
+              Delete Selected Trip
+            </button>
+          </article>
+
+          <article className="workspace-panel">
+            <h3>Create / Join</h3>
+            <label>
+              New trip title
+              <input value={newTripTitle} onChange={(event) => setNewTripTitle(event.target.value)} />
+            </label>
+            <button type="button" className="btn-primary" onClick={createTrip}>
+              Create Trip
+            </button>
+            <label>
+              Invite code
+              <input placeholder="Paste invite code" value={inviteCode} onChange={(event) => setInviteCode(event.target.value)} />
+            </label>
+            <button type="button" className="btn-secondary" onClick={acceptInvite}>
+              Accept Invite
+            </button>
+          </article>
+
+          <article className="workspace-panel">
+            <h3>Collaboration</h3>
+            <button type="button" className="btn-secondary" onClick={createInvite} disabled={!nickname || !selectedTripId}>
+              Create Invite Link
+            </button>
+            <div className="packing-permission-row">
+              <span className="packing-permission-label">Invited members can edit packing list</span>
+              <label className="packing-permission-toggle">
+                <input
+                  type="checkbox"
+                  checked={Boolean(selectedTrip?.allowMemberPackingEdit)}
+                  onChange={(event) => updateTripPackingPermission(event.target.checked)}
+                  disabled={!selectedTripId || !canChangePackingPermission || updatingPackingPermission}
+                />
+                <span>{selectedTrip?.allowMemberPackingEdit ? 'ON' : 'OFF'}</span>
+              </label>
+              <p className="packing-permission-note">
+                Default OFF: only editors can edit. Turn ON to allow invited members too.
+              </p>
+            </div>
+            {generatedInviteLink ? <p className="info-text">Invite: {generatedInviteLink}</p> : null}
+            <button
+              type="button"
+              className="btn-secondary danger"
+              onClick={deleteAllTrips}
+              disabled={!trips.length || deletingTrip || deletingAllTrips}
+            >
+              Delete All My Trips
+            </button>
+          </article>
         </div>
-        <div className="trip-row">
-          <button
-            type="button"
-            className="btn-secondary danger"
-            onClick={deleteSelectedTrip}
-            disabled={!selectedTripId || deletingTrip || deletingAllTrips}
-          >
-            Delete Selected Trip
-          </button>
-          <button
-            type="button"
-            className="btn-secondary danger"
-            onClick={deleteAllTrips}
-            disabled={!trips.length || deletingTrip || deletingAllTrips}
-          >
-            Delete All My Trips
-          </button>
-        </div>
-        <div className="packing-permission-row">
-          <span className="packing-permission-label">Invited members can edit packing list</span>
-          <label className="packing-permission-toggle">
-            <input
-              type="checkbox"
-              checked={Boolean(selectedTrip?.allowMemberPackingEdit)}
-              onChange={(event) => updateTripPackingPermission(event.target.checked)}
-              disabled={!selectedTripId || !canChangePackingPermission || updatingPackingPermission}
-            />
-            <span>{selectedTrip?.allowMemberPackingEdit ? 'ON' : 'OFF'}</span>
-          </label>
-          <p className="packing-permission-note">
-            Default OFF: only editor can edit. Turn ON to allow invited members too.
-          </p>
-        </div>
-        {generatedInviteLink ? <p className="info-text">Invite: {generatedInviteLink}</p> : null}
       </section>
 
-      <nav className="quick-shortcuts">
-        <button type="button" className="shortcut-btn" onClick={() => openExtraTab('plan', 'extra-plan-section')}>
-          <span className="shortcut-emoji" aria-hidden>
-            🗺️
-          </span>
-          <span>Plan</span>
-        </button>
-        <button type="button" className="shortcut-btn" onClick={() => openExtraTab('event', 'extra-event-section')}>
-          <span className="shortcut-emoji" aria-hidden>
-            🎉
-          </span>
-          <span>Event</span>
-        </button>
-        <button type="button" className="shortcut-btn" onClick={() => openMainTab('diary', 'tab-diary-section')}>
-          <span className="shortcut-emoji" aria-hidden>
-            📔
-          </span>
-          <span>{copy.diary}</span>
-        </button>
-        <button type="button" className="shortcut-btn" onClick={() => openMainTab('tripstargram', 'tab-tripstargram-section')}>
-          <span className="shortcut-emoji" aria-hidden>
-            📸
-          </span>
-          <span>{copy.tripstargram ?? 'Tripstargram'}</span>
-        </button>
-      </nav>
+      {activeTab === 'flight' || activeTab === 'hotel' || activeTab === 'places' || activeTab === 'restaurants' ? (
+        <section className="card journey-tools-card">
+          <p className="hub-subtab-title">Journey Studio</p>
+          <div className="journey-tools-row">
+            <button type="button" className="journey-tool-btn" onClick={() => openMainTab('record', 'tab-record-section')}>
+              <span aria-hidden>🧳</span>
+              <span>Record</span>
+            </button>
+            <button type="button" className="journey-tool-btn" onClick={() => openMainTab('diary', 'tab-diary-section')}>
+              <span aria-hidden>📔</span>
+              <span>{copy.diary}</span>
+            </button>
+            <button type="button" className="journey-tool-btn" onClick={() => openMainTab('tripstargram', 'tab-tripstargram-section')}>
+              <span aria-hidden>📸</span>
+              <span>{copy.tripstargram ?? 'Tripstargram'}</span>
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       {activeTab === 'places' ? (
         <section className="card hub-subtab-card">
@@ -1937,22 +1928,9 @@ export function TripMasterApp() {
             <button
               type="button"
               className={planHelperSubTab === 'transportation' ? 'sub-tab active' : 'sub-tab'}
-              onClick={() => {
-                setPlanHelperSubTab('transportation');
-                setActiveExtraTab('transportation');
-              }}
+              onClick={() => setPlanHelperSubTab('transportation')}
             >
               Transportation
-            </button>
-            <button
-              type="button"
-              className={planHelperSubTab === 'plan' ? 'sub-tab active' : 'sub-tab'}
-              onClick={() => {
-                setPlanHelperSubTab('plan');
-                setActiveExtraTab('plan');
-              }}
-            >
-              Plan
             </button>
           </div>
         </section>
@@ -1965,30 +1943,21 @@ export function TripMasterApp() {
             <button
               type="button"
               className={informationSubTab === 'information' ? 'sub-tab active' : 'sub-tab'}
-              onClick={() => {
-                setInformationSubTab('information');
-                setActiveExtraTab('information');
-              }}
+              onClick={() => setInformationSubTab('information')}
             >
               Information
             </button>
             <button
               type="button"
               className={informationSubTab === 'event' ? 'sub-tab active' : 'sub-tab'}
-              onClick={() => {
-                setInformationSubTab('event');
-                setActiveExtraTab('event');
-              }}
+              onClick={() => setInformationSubTab('event')}
             >
               Events/Festival
             </button>
             <button
               type="button"
               className={informationSubTab === 'tips' ? 'sub-tab active' : 'sub-tab'}
-              onClick={() => {
-                setInformationSubTab('tips');
-                setActiveExtraTab('tips');
-              }}
+              onClick={() => setInformationSubTab('tips')}
             >
               Tips
             </button>
@@ -2187,12 +2156,14 @@ export function TripMasterApp() {
           ) : (
             <div className="result-list">
               {placesForDisplay.map((place) => (
-                <article key={place.id} className="result-card">
+                <article key={place.id} className="result-card place-card">
                   <img src={place.imageUrl} alt={place.name} className="thumb" />
                   <div>
                     <strong>{place.name}</strong>
-                    <p>
-                      {place.city} · {place.theme} · ⭐ {place.rating}
+                    <p className="tag-row">
+                      <span className="data-tag">📍 {place.city}</span>
+                      <span className="data-tag">🧭 {place.theme}</span>
+                      <span className="data-tag">⭐ {place.rating}</span>
                     </p>
                     <p>{place.summary}</p>
                     <button type="button" className="btn-secondary" onClick={() => savePlace(place)}>
@@ -2233,15 +2204,16 @@ export function TripMasterApp() {
           </div>
           <div className="result-list">
             {restaurants.map((restaurant) => (
-              <article key={restaurant.id} className="result-card">
+              <article key={restaurant.id} className="result-card restaurant-card">
                 <img src={restaurant.imageUrl} alt={restaurant.name} className="thumb" />
                 <div>
                   <strong>{restaurant.name}</strong>
-                  <p>
-                    {restaurant.city} · {restaurant.cuisine}
-                  </p>
-                  <p>
-                    ⭐ {restaurant.rating} ({restaurant.reviewCount})
+                  <p className="tag-row">
+                    <span className="data-tag">📍 {restaurant.city}</span>
+                    <span className="data-tag">🍽️ {restaurant.cuisine}</span>
+                    <span className="data-tag">
+                      ⭐ {restaurant.rating} ({restaurant.reviewCount})
+                    </span>
                   </p>
                   <p>{restaurant.summary}</p>
                 </div>
@@ -2252,7 +2224,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'record' ? (
-        <section className="card">
+        <section id="tab-record-section" className="card">
           <div className="section-heading">
             <p className="section-kicker">🧳 Travel Record</p>
             <h2>Save your media memories in shareable cards</h2>
@@ -2714,9 +2686,21 @@ export function TripMasterApp() {
         </section>
       ) : null}
 
-      {activeTab === 'places' && planHelperSubTab === 'plan' ? (
+      {activeTab === 'places' && planHelperSubTab === 'transportation' ? (
         <section id="extra-plan-section" className="card">
-          <h2>🗺️ Smart Plan</h2>
+          <h2>🚄 Transportation & Smart Plan</h2>
+          <div className="result-list transport-route-list">
+            {transportOptions.map((option) => (
+              <article key={`${option.mode}-${option.bookingUrl}`} className="result-card transport-card">
+                <strong>{option.mode}</strong>
+                <p>{option.reason}</p>
+                <p>{option.estimatedCost}</p>
+                <a href={option.bookingUrl} target="_blank" rel="noreferrer">
+                  Open booking
+                </a>
+              </article>
+            ))}
+          </div>
           <article className="plan-prep-card">
             <div className="plan-prep-header">
               <strong>
@@ -3014,24 +2998,6 @@ export function TripMasterApp() {
               ))}
             </div>
           ) : null}
-        </section>
-      ) : null}
-
-      {activeTab === 'places' && planHelperSubTab === 'transportation' ? (
-        <section className="card">
-          <h2>🚄 Transportation</h2>
-          <div className="result-list">
-            {transportOptions.map((option) => (
-              <article key={`${option.mode}-${option.bookingUrl}`} className="result-card">
-                <strong>{option.mode}</strong>
-                <p>{option.reason}</p>
-                <p>{option.estimatedCost}</p>
-                <a href={option.bookingUrl} target="_blank" rel="noreferrer">
-                  Open booking
-                </a>
-              </article>
-            ))}
-          </div>
         </section>
       ) : null}
 
