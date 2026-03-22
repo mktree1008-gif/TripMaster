@@ -27,13 +27,8 @@ import { translateText } from '@/lib/translate-client';
 const mainTabs: Array<{ key: TabKey; fallbackLabel: string }> = [
   { key: 'flight', fallbackLabel: 'Flight' },
   { key: 'hotel', fallbackLabel: 'Hotel' },
-  { key: 'places', fallbackLabel: 'Places' },
-  { key: 'restaurants', fallbackLabel: 'Restaurants' },
-  { key: 'record', fallbackLabel: 'Record' },
-  { key: 'diary', fallbackLabel: 'Diary' },
-  { key: 'profile', fallbackLabel: 'Profile' },
-  { key: 'settings', fallbackLabel: 'Settings' },
-  { key: 'tripstargram', fallbackLabel: 'Tripstargram' },
+  { key: 'places', fallbackLabel: 'PlanHelper' },
+  { key: 'restaurants', fallbackLabel: 'Information' },
 ];
 
 const extraTabs = ['information', 'plan', 'transportation', 'tips', 'entertainment', 'event'] as const;
@@ -268,10 +263,15 @@ export function TripMasterApp() {
     null
   );
   const [showAuthPanel, setShowAuthPanel] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [updatingPackingPermission, setUpdatingPackingPermission] = useState(false);
   const [deletingTrip, setDeletingTrip] = useState(false);
   const [deletingAllTrips, setDeletingAllTrips] = useState(false);
+  const [planHelperSubTab, setPlanHelperSubTab] = useState<'places' | 'activities' | 'restaurants' | 'transportation' | 'plan'>(
+    'places'
+  );
+  const [informationSubTab, setInformationSubTab] = useState<'information' | 'event' | 'tips'>('information');
 
   const [flightOrigin, setFlightOrigin] = useState('ICN');
   const [flightDestination, setFlightDestination] = useState('NRT');
@@ -1494,33 +1494,61 @@ export function TripMasterApp() {
 
   function openMainTab(tab: TabKey, sectionId = 'main-tabs-anchor') {
     setActiveTab(tab);
+    setShowMobileMenu(false);
+    setShowAccountMenu(false);
     scrollToSection(sectionId);
   }
 
-  function openExtraTab(tab: ExtraTabKey, sectionId = 'extra-tabs-anchor') {
+  function openExtraTab(tab: ExtraTabKey, sectionId = 'main-tabs-anchor') {
     setActiveExtraTab(tab);
+    if (tab === 'plan' || tab === 'transportation') {
+      setActiveTab('places');
+      setPlanHelperSubTab(tab === 'plan' ? 'plan' : 'transportation');
+    } else if (tab === 'information' || tab === 'event' || tab === 'tips') {
+      setActiveTab('restaurants');
+      setInformationSubTab(tab === 'information' ? 'information' : tab === 'event' ? 'event' : 'tips');
+    }
+    setShowMobileMenu(false);
+    setShowAccountMenu(false);
     scrollToSection(sectionId);
   }
 
   function onAccountShortcutClick() {
-    if (nickname) {
+    setShowAccountMenu((prev) => !prev);
+    setShowMobileMenu(false);
+  }
+
+  function openAccountTab(tab: 'profile' | 'settings') {
+    setShowAccountMenu(false);
+    if (tab === 'profile') {
       openMainTab('profile', 'tab-profile-section');
       return;
     }
+    openMainTab('settings', 'tab-settings-section');
+  }
+
+  function openLoginPanelFromMenu() {
+    setShowAccountMenu(false);
     setShowAuthPanel(true);
     scrollToSection('hero-auth-anchor');
   }
 
-  function onMobileMainTabSelect(tab: TabKey) {
+  function onMainNavSelect(tab: TabKey) {
     setActiveTab(tab);
     setShowMobileMenu(false);
-    scrollToSection('main-tabs-anchor');
+    setShowAccountMenu(false);
+    if (tab === 'places' && !planHelperSubTab) {
+      setPlanHelperSubTab('places');
+    }
+    if (tab === 'restaurants' && !informationSubTab) {
+      setInformationSubTab('information');
+    }
   }
 
-  function onMobileExtraTabSelect(tab: ExtraTabKey) {
-    setActiveExtraTab(tab);
+  function onMobileMainTabSelect(tab: TabKey) {
+    onMainNavSelect(tab);
     setShowMobileMenu(false);
-    scrollToSection('extra-tabs-anchor');
+    scrollToSection('main-tabs-anchor');
   }
 
   const selectedTrip = trips.find((trip) => trip.id === selectedTripId) ?? null;
@@ -1617,6 +1645,10 @@ export function TripMasterApp() {
   const planPrepGuide = travelPrepGuides[countryCode] ?? travelPrepGuides.DEFAULT;
   const planPrepItems = planPrepGuide[planPrepTopic];
   const packingChecklist = activePackingKey ? packingByTrip[activePackingKey] ?? [] : [];
+  const placesForDisplay =
+    planHelperSubTab === 'activities'
+      ? placesResponse.places.filter((place) => place.theme === 'activity')
+      : placesResponse.places;
 
   return (
     <div className="tripmaster-shell">
@@ -1643,7 +1675,7 @@ export function TripMasterApp() {
               <span className="account-chip-icon" aria-hidden>
                 👤
               </span>
-              <span className="account-chip-text">{nickname ? `Profile · ${nickname}` : 'Login / Profile'}</span>
+              <span className="account-chip-text">{nickname ? `Account · ${nickname}` : 'Login / Account'}</span>
             </button>
             <button
               type="button"
@@ -1656,9 +1688,32 @@ export function TripMasterApp() {
             </button>
           </div>
         </div>
+        {showAccountMenu ? (
+          <div className="account-menu-panel">
+            <button type="button" className="account-menu-item" onClick={openLoginPanelFromMenu}>
+              Login / Account
+            </button>
+            <button
+              type="button"
+              className="account-menu-item"
+              onClick={() => openAccountTab('profile')}
+              disabled={!nickname}
+            >
+              Profile
+            </button>
+            <button
+              type="button"
+              className="account-menu-item"
+              onClick={() => openAccountTab('settings')}
+              disabled={!nickname}
+            >
+              Settings
+            </button>
+          </div>
+        ) : null}
         {showMobileMenu ? (
           <div className="mobile-menu-panel">
-            <p className="mobile-menu-title">Main Tabs</p>
+            <p className="mobile-menu-title">Menu</p>
             <div className="mobile-menu-grid">
               {mainTabs.map((tab) => (
                 <button
@@ -1667,20 +1722,7 @@ export function TripMasterApp() {
                   className={activeTab === tab.key ? 'mobile-menu-item active' : 'mobile-menu-item'}
                   onClick={() => onMobileMainTabSelect(tab.key)}
                 >
-                  {copy[tab.key] ?? tab.fallbackLabel}
-                </button>
-              ))}
-            </div>
-            <p className="mobile-menu-title">Extra Tabs</p>
-            <div className="mobile-menu-grid">
-              {extraTabs.map((tab) => (
-                <button
-                  key={`mobile-extra-${tab}`}
-                  type="button"
-                  className={activeExtraTab === tab ? 'mobile-menu-item active' : 'mobile-menu-item'}
-                  onClick={() => onMobileExtraTabSelect(tab)}
-                >
-                  {tab}
+                  {tab.fallbackLabel}
                 </button>
               ))}
             </div>
@@ -1692,21 +1734,9 @@ export function TripMasterApp() {
               key={tab.key}
               type="button"
               className={activeTab === tab.key ? 'tab-btn active' : 'tab-btn'}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => onMainNavSelect(tab.key)}
             >
-              {copy[tab.key] ?? tab.fallbackLabel}
-            </button>
-          ))}
-        </nav>
-        <nav id="extra-tabs-anchor" className="extra-tabs top-extra-tabs">
-          {extraTabs.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              className={activeExtraTab === tab ? 'sub-tab active' : 'sub-tab'}
-              onClick={() => setActiveExtraTab(tab)}
-            >
-              {tab}
+              {tab.fallbackLabel}
             </button>
           ))}
         </nav>
@@ -1842,6 +1872,96 @@ export function TripMasterApp() {
         </button>
       </nav>
 
+      {activeTab === 'places' ? (
+        <section className="card hub-subtab-card">
+          <p className="hub-subtab-title">PlanHelper</p>
+          <div className="hub-subtab-list">
+            <button
+              type="button"
+              className={planHelperSubTab === 'places' ? 'sub-tab active' : 'sub-tab'}
+              onClick={() => setPlanHelperSubTab('places')}
+            >
+              Places
+            </button>
+            <button
+              type="button"
+              className={planHelperSubTab === 'activities' ? 'sub-tab active' : 'sub-tab'}
+              onClick={() => {
+                setPlanHelperSubTab('activities');
+                setPlacesTheme('activity');
+              }}
+            >
+              Activities
+            </button>
+            <button
+              type="button"
+              className={planHelperSubTab === 'restaurants' ? 'sub-tab active' : 'sub-tab'}
+              onClick={() => setPlanHelperSubTab('restaurants')}
+            >
+              Restaurants
+            </button>
+            <button
+              type="button"
+              className={planHelperSubTab === 'transportation' ? 'sub-tab active' : 'sub-tab'}
+              onClick={() => {
+                setPlanHelperSubTab('transportation');
+                setActiveExtraTab('transportation');
+              }}
+            >
+              Transportation
+            </button>
+            <button
+              type="button"
+              className={planHelperSubTab === 'plan' ? 'sub-tab active' : 'sub-tab'}
+              onClick={() => {
+                setPlanHelperSubTab('plan');
+                setActiveExtraTab('plan');
+              }}
+            >
+              Plan
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === 'restaurants' ? (
+        <section className="card hub-subtab-card">
+          <p className="hub-subtab-title">Information</p>
+          <div className="hub-subtab-list">
+            <button
+              type="button"
+              className={informationSubTab === 'information' ? 'sub-tab active' : 'sub-tab'}
+              onClick={() => {
+                setInformationSubTab('information');
+                setActiveExtraTab('information');
+              }}
+            >
+              Information
+            </button>
+            <button
+              type="button"
+              className={informationSubTab === 'event' ? 'sub-tab active' : 'sub-tab'}
+              onClick={() => {
+                setInformationSubTab('event');
+                setActiveExtraTab('event');
+              }}
+            >
+              Events/Festival
+            </button>
+            <button
+              type="button"
+              className={informationSubTab === 'tips' ? 'sub-tab active' : 'sub-tab'}
+              onClick={() => {
+                setInformationSubTab('tips');
+                setActiveExtraTab('tips');
+              }}
+            >
+              Tips
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       {activeTab === 'flight' ? (
         <section className="card">
           <div className="grid two">
@@ -1974,7 +2094,7 @@ export function TripMasterApp() {
         </section>
       ) : null}
 
-      {activeTab === 'places' ? (
+      {activeTab === 'places' && (planHelperSubTab === 'places' || planHelperSubTab === 'activities') ? (
         <section className="card">
           <div className="grid three">
             <label>
@@ -2020,7 +2140,7 @@ export function TripMasterApp() {
             </div>
           ) : (
             <div className="result-list">
-              {placesResponse.places.map((place) => (
+              {placesForDisplay.map((place) => (
                 <article key={place.id} className="result-card">
                   <img src={place.imageUrl} alt={place.name} className="thumb" />
                   <div>
@@ -2035,12 +2155,13 @@ export function TripMasterApp() {
                   </div>
                 </article>
               ))}
+              {placesForDisplay.length === 0 ? <p>No places found for this subtab yet.</p> : null}
             </div>
           )}
         </section>
       ) : null}
 
-      {activeTab === 'restaurants' ? (
+      {activeTab === 'places' && planHelperSubTab === 'restaurants' ? (
         <section className="card">
           <div className="grid two">
             <label>
@@ -2430,7 +2551,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'settings' ? (
-        <section className="card">
+        <section id="tab-settings-section" className="card">
           <h2>Settings</h2>
           <form onSubmit={submitSupport}>
             <div className="grid two">
@@ -2466,7 +2587,7 @@ export function TripMasterApp() {
         </section>
       ) : null}
 
-      {activeExtraTab === 'information' ? (
+      {activeTab === 'restaurants' && informationSubTab === 'information' ? (
         <section className="card">
           <h2>Information</h2>
           <div className="grid three">
@@ -2509,7 +2630,7 @@ export function TripMasterApp() {
         </section>
       ) : null}
 
-      {activeExtraTab === 'plan' ? (
+      {activeTab === 'places' && planHelperSubTab === 'plan' ? (
         <section id="extra-plan-section" className="card">
           <h2>Plan</h2>
           <article className="plan-prep-card">
@@ -2812,7 +2933,7 @@ export function TripMasterApp() {
         </section>
       ) : null}
 
-      {activeExtraTab === 'transportation' ? (
+      {activeTab === 'places' && planHelperSubTab === 'transportation' ? (
         <section className="card">
           <h2>Transportation</h2>
           <div className="result-list">
@@ -2830,7 +2951,7 @@ export function TripMasterApp() {
         </section>
       ) : null}
 
-      {activeExtraTab === 'tips' ? (
+      {activeTab === 'restaurants' && informationSubTab === 'tips' ? (
         <section className="card">
           <h2>Tips</h2>
           <p>Community + global travel tips in friendly iMessage-like bubbles.</p>
@@ -2889,7 +3010,7 @@ export function TripMasterApp() {
         </section>
       ) : null}
 
-      {activeExtraTab === 'event' ? (
+      {activeTab === 'restaurants' && informationSubTab === 'event' ? (
         <section id="extra-event-section" className="card">
           <h2>Event</h2>
           <p>

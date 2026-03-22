@@ -12,6 +12,14 @@
   --shadow: 0 20px 46px rgba(15, 39, 71, 0.1);
 }
 
+@font-face {
+  font-family: 'Pretendard';
+  src: url('/fonts/PretendardVariable.woff2') format('woff2');
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -20,7 +28,7 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-  font-family: Arial, 'Noto Sans KR', sans-serif;
+  font-family: 'Pretendard', 'Noto Sans KR', Arial, sans-serif;
   color: var(--ink);
   background:
     radial-gradient(circle at 15% 10%, rgba(14, 165, 233, 0.26), transparent 32%),
@@ -58,6 +66,12 @@ body {
   margin-bottom: 8px;
 }
 
+.top-nav-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .brand-mark {
   border: 1px solid rgba(255, 255, 255, 0.32);
   border-radius: 999px;
@@ -93,6 +107,87 @@ body {
   text-overflow: ellipsis;
 }
 
+.mobile-menu-btn {
+  display: none;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  font-size: 1.2rem;
+  line-height: 1;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.account-menu-panel {
+  margin: 0 0 8px auto;
+  width: min(240px, 92vw);
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  background: rgba(8, 28, 56, 0.9);
+  padding: 8px;
+}
+
+.account-menu-item {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #f4f8ff;
+  padding: 8px 10px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.account-menu-item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mobile-menu-panel {
+  margin-bottom: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  background: rgba(9, 33, 64, 0.86);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.mobile-menu-title {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #cfe3ff;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.mobile-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mobile-menu-item {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #f2f7ff;
+  font-weight: 700;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.mobile-menu-item.active {
+  background: #fff;
+  color: #113c6f;
+}
+
 .top-main-tabs,
 .top-extra-tabs {
   margin-bottom: 0;
@@ -114,6 +209,26 @@ body {
 .top-extra-tabs .sub-tab.active {
   background: #fff;
   color: #113c6f;
+}
+
+.hub-subtab-card {
+  padding: 10px 12px;
+}
+
+.hub-subtab-title {
+  margin: 0 0 8px;
+  color: #1d3f69;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hub-subtab-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .hero-header {
@@ -869,6 +984,14 @@ textarea {
     top: 6px;
     border-radius: 15px;
     padding: 8px;
+  }
+
+  .top-main-tabs {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex;
   }
 
   .account-chip {
