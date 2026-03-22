@@ -783,12 +783,22 @@ function TopHeroHeader({
 }
 
 export function TripMasterApp() {
-  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
-  const backendConfigured = Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-      !String(process.env.NEXT_PUBLIC_SUPABASE_URL).includes('example.supabase.co')
+  const backendConfigured = useMemo(
+    () =>
+      Boolean(
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+          !String(process.env.NEXT_PUBLIC_SUPABASE_URL).includes('example.supabase.co')
+      ),
+    []
   );
+  const supabase = useMemo(() => {
+    if (!backendConfigured) {
+      // Keep demo mode build-safe when Supabase env vars are not configured.
+      return null as unknown as ReturnType<typeof getSupabaseBrowserClient>;
+    }
+    return getSupabaseBrowserClient();
+  }, [backendConfigured]);
   const [language, setLanguage] = useState<LanguageCode>('en');
   const [autoTranslate, setAutoTranslate] = useState(true);
   const copy = t(language);

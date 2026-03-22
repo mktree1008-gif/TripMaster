@@ -11,7 +11,14 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const run = async () => {
-      const supabase = getSupabaseBrowserClient();
+      let supabase: ReturnType<typeof getSupabaseBrowserClient>;
+      try {
+        supabase = getSupabaseBrowserClient();
+      } catch {
+        setMessage('Authentication is not configured yet. Redirecting to intro...');
+        setTimeout(() => router.replace('/'), 700);
+        return;
+      }
       const {
         data: { session },
       } = await supabase.auth.getSession();
