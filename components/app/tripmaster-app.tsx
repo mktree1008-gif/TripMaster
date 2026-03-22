@@ -1793,27 +1793,32 @@ export function TripMasterApp() {
               className={activeTab === tab.key ? 'tab-btn active' : 'tab-btn'}
               onClick={() => onMainNavSelect(tab.key)}
             >
-              <span aria-hidden>{tab.icon}</span> <span>{tab.fallbackLabel}</span>
+              <span className="tab-icon" aria-hidden>
+                {tab.icon}
+              </span>
+              <span className="tab-label">{tab.fallbackLabel}</span>
             </button>
           ))}
         </nav>
       </header>
 
       <header className="hero-header">
-        <p className="eyebrow">TripMaster</p>
-        <h1>{copy.appTitle}</h1>
-        <p>{copy.appSubtitle}</p>
-        <div className="hero-highlights">
-          <span>✈️ Airline-style planning workspace</span>
-          <span>🚄 Route-aware itinerary assistance</span>
-          <span>📍 Curated discovery with trusted structure</span>
+        <div className="hero-copy-block">
+          <p className="eyebrow">TripMaster</p>
+          <h1>{copy.appTitle}</h1>
+          <p>{copy.appSubtitle}</p>
+          <div className="hero-highlights">
+            <span>✈️ Airline-style planning workspace</span>
+            <span>🚄 Route-aware itinerary assistance</span>
+            <span>📍 Curated discovery with trusted structure</span>
+          </div>
         </div>
-        <label className="hero-translate-toggle">
-          <input type="checkbox" checked={autoTranslate} onChange={(event) => setAutoTranslate(event.target.checked)} />
-          Auto-translate shared content
-        </label>
+        <div id="hero-auth-anchor" className="hero-auth-block">
+          <label className="hero-translate-toggle">
+            <input type="checkbox" checked={autoTranslate} onChange={(event) => setAutoTranslate(event.target.checked)} />
+            Auto-translate shared content
+          </label>
 
-        <div id="hero-auth-anchor">
           {showAuthPanel || Boolean(nickname) ? (
             <AuthPanel supabase={supabase} language={language} currentNickname={nickname} onSignedIn={onSignedIn} onSignedOut={onSignedOut} />
           ) : (
@@ -1823,7 +1828,7 @@ export function TripMasterApp() {
           )}
         </div>
         {!backendConfigured ? (
-          <p className="error-text">Backend is not configured yet. Set real Supabase environment variables to enable save/login.</p>
+          <p className="error-text hero-error">Backend is not configured yet. Set real Supabase environment variables to enable save/login.</p>
         ) : null}
       </header>
 
@@ -1946,7 +1951,8 @@ export function TripMasterApp() {
               className={planHelperSubTab === 'places' ? 'sub-tab active' : 'sub-tab'}
               onClick={() => setPlanHelperSubTab('places')}
             >
-              Places
+              <span aria-hidden>📍</span>
+              <span>Places</span>
             </button>
             <button
               type="button"
@@ -1956,21 +1962,24 @@ export function TripMasterApp() {
                 setPlacesTheme('activity');
               }}
             >
-              Activities
+              <span aria-hidden>🧗</span>
+              <span>Activities</span>
             </button>
             <button
               type="button"
               className={planHelperSubTab === 'restaurants' ? 'sub-tab active' : 'sub-tab'}
               onClick={() => setPlanHelperSubTab('restaurants')}
             >
-              Restaurants
+              <span aria-hidden>🍽️</span>
+              <span>Restaurants</span>
             </button>
             <button
               type="button"
               className={planHelperSubTab === 'transportation' ? 'sub-tab active' : 'sub-tab'}
               onClick={() => setPlanHelperSubTab('transportation')}
             >
-              Transportation
+              <span aria-hidden>🚄</span>
+              <span>Transportation</span>
             </button>
           </div>
         </section>
@@ -1985,21 +1994,24 @@ export function TripMasterApp() {
               className={informationSubTab === 'information' ? 'sub-tab active' : 'sub-tab'}
               onClick={() => setInformationSubTab('information')}
             >
-              Information
+              <span aria-hidden>🌍</span>
+              <span>Information</span>
             </button>
             <button
               type="button"
               className={informationSubTab === 'event' ? 'sub-tab active' : 'sub-tab'}
               onClick={() => setInformationSubTab('event')}
             >
-              Events/Festival
+              <span aria-hidden>🎫</span>
+              <span>Events/Festival</span>
             </button>
             <button
               type="button"
               className={informationSubTab === 'tips' ? 'sub-tab active' : 'sub-tab'}
               onClick={() => setInformationSubTab('tips')}
             >
-              Tips
+              <span aria-hidden>💬</span>
+              <span>Tips</span>
             </button>
           </div>
         </section>
@@ -2315,7 +2327,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'places' && (planHelperSubTab === 'places' || planHelperSubTab === 'activities') ? (
-        <section className="card section-card glass-card">
+        <section className="card section-card glass-card planhelper-section">
           <div className="section-heading">
             <p className="section-kicker">📍 Discovery Board</p>
             <h2>{planHelperSubTab === 'activities' ? 'Pick active adventures for your style' : 'Choose places that match your trip mood'}</h2>
@@ -2363,11 +2375,15 @@ export function TripMasterApp() {
               ))}
             </div>
           ) : (
-            <div className="result-list">
+            <div className="result-list planhelper-card-grid">
               {placesForDisplay.map((place) => (
                 <article
                   key={place.id}
-                  className={planHelperSubTab === 'activities' ? 'result-card place-card activity-card' : 'result-card place-card'}
+                  className={
+                    planHelperSubTab === 'activities'
+                      ? 'result-card place-card planhelper-card activity-card'
+                      : 'result-card place-card planhelper-card'
+                  }
                 >
                   <img src={place.imageUrl} alt={place.name} className="thumb" />
                   <div>
@@ -2392,7 +2408,7 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'places' && planHelperSubTab === 'restaurants' ? (
-        <section className="card section-card glass-card">
+        <section className="card section-card glass-card planhelper-section">
           <div className="section-heading">
             <p className="section-kicker">🍽️ Restaurant Picks</p>
             <h2>Curated city-by-city dining recommendations</h2>
@@ -2415,9 +2431,9 @@ export function TripMasterApp() {
               </select>
             </label>
           </div>
-          <div className="result-list">
+          <div className="result-list planhelper-card-grid">
             {restaurants.map((restaurant) => (
-              <article key={restaurant.id} className="result-card restaurant-card">
+              <article key={restaurant.id} className="result-card restaurant-card planhelper-card">
                 <img src={restaurant.imageUrl} alt={restaurant.name} className="thumb" />
                 <div>
                   <strong>{restaurant.name}</strong>
@@ -2925,9 +2941,9 @@ export function TripMasterApp() {
       ) : null}
 
       {activeTab === 'places' && planHelperSubTab === 'transportation' ? (
-        <section id="extra-plan-section" className="card section-card glass-card">
+        <section id="extra-plan-section" className="card section-card glass-card planhelper-section">
           <h2>🚄 Transportation & Smart Plan</h2>
-          <div className="result-list transport-route-list">
+          <div className="result-list transport-route-list planhelper-card-grid">
             {transportOptions.length === 0 ? <p className="empty-state-text">No transportation route yet. Generate an itinerary first.</p> : null}
             {transportOptions.map((option) => {
               const optionKey = `${option.mode}-${option.bookingUrl}`;
@@ -2935,7 +2951,11 @@ export function TripMasterApp() {
               return (
                 <article
                   key={optionKey}
-                  className={isActive ? 'result-card transport-card active' : 'result-card transport-card'}
+                  className={
+                    isActive
+                      ? 'result-card transport-card route-card planhelper-card active'
+                      : 'result-card transport-card route-card planhelper-card'
+                  }
                   onClick={() => setSelectedTransportKey(optionKey)}
                 >
                   <strong>{option.mode}</strong>
@@ -3025,7 +3045,7 @@ export function TripMasterApp() {
                         }
                       }}
                     />
-                  <button type="button" className="btn-secondary" onClick={addTemplateItem}>
+                    <button type="button" className="btn-secondary" onClick={addTemplateItem}>
                       템플릿 추가
                     </button>
                   </div>
