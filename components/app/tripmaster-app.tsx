@@ -24,11 +24,11 @@ import {
 import { apiFetch } from '@/lib/client-api';
 import { translateText } from '@/lib/translate-client';
 
-const mainTabs: Array<{ key: TabKey; fallbackLabel: string }> = [
-  { key: 'flight', fallbackLabel: 'Flight' },
-  { key: 'hotel', fallbackLabel: 'Hotel' },
-  { key: 'places', fallbackLabel: 'PlanHelper' },
-  { key: 'restaurants', fallbackLabel: 'Information' },
+const mainTabs: Array<{ key: TabKey; fallbackLabel: string; shortLabel: string; icon: string }> = [
+  { key: 'flight', fallbackLabel: 'Flight', shortLabel: 'Flight', icon: '✈️' },
+  { key: 'hotel', fallbackLabel: 'Hotel', shortLabel: 'Hotel', icon: '🏨' },
+  { key: 'places', fallbackLabel: 'PlanHelper', shortLabel: 'Plan', icon: '🧭' },
+  { key: 'restaurants', fallbackLabel: 'Information', shortLabel: 'Info', icon: '🌍' },
 ];
 
 const extraTabs = ['information', 'plan', 'transportation', 'tips', 'entertainment', 'event'] as const;
@@ -1756,7 +1756,7 @@ export function TripMasterApp() {
                   className={activeTab === tab.key ? 'mobile-menu-item active' : 'mobile-menu-item'}
                   onClick={() => onMobileMainTabSelect(tab.key)}
                 >
-                  {tab.fallbackLabel}
+                  <span aria-hidden>{tab.icon}</span> <span>{tab.shortLabel}</span>
                 </button>
               ))}
             </div>
@@ -1770,7 +1770,7 @@ export function TripMasterApp() {
               className={activeTab === tab.key ? 'tab-btn active' : 'tab-btn'}
               onClick={() => onMainNavSelect(tab.key)}
             >
-              {tab.fallbackLabel}
+              <span aria-hidden>{tab.icon}</span> <span>{tab.fallbackLabel}</span>
             </button>
           ))}
         </nav>
@@ -1813,7 +1813,7 @@ export function TripMasterApp() {
       </header>
 
       <section className="card trip-card">
-        <h2>Trip Workspace</h2>
+        <h2>🧾 Trip Workspace</h2>
         <div className="trip-row">
           <label>
             Trip
@@ -1998,6 +1998,10 @@ export function TripMasterApp() {
 
       {activeTab === 'flight' ? (
         <section className="card">
+          <div className="section-heading">
+            <p className="section-kicker">✈️ Flight Center</p>
+            <h2>Find the best fare and fly with confidence</h2>
+          </div>
           <div className="grid two">
             <label>
               Origin
@@ -2090,6 +2094,10 @@ export function TripMasterApp() {
 
       {activeTab === 'hotel' ? (
         <section className="card">
+          <div className="section-heading">
+            <p className="section-kicker">🏨 Hotel Desk</p>
+            <h2>Compare trusted stays in one clean view</h2>
+          </div>
           <div className="grid two">
             <label>
               City
@@ -2130,6 +2138,10 @@ export function TripMasterApp() {
 
       {activeTab === 'places' && (planHelperSubTab === 'places' || planHelperSubTab === 'activities') ? (
         <section className="card">
+          <div className="section-heading">
+            <p className="section-kicker">📍 Discovery Board</p>
+            <h2>{planHelperSubTab === 'activities' ? 'Pick active adventures for your style' : 'Choose places that match your trip mood'}</h2>
+          </div>
           <div className="grid three">
             <label>
               Country
@@ -2197,6 +2209,10 @@ export function TripMasterApp() {
 
       {activeTab === 'places' && planHelperSubTab === 'restaurants' ? (
         <section className="card">
+          <div className="section-heading">
+            <p className="section-kicker">🍽️ Restaurant Picks</p>
+            <h2>Curated city-by-city dining recommendations</h2>
+          </div>
           <div className="grid two">
             <label>
               Country
@@ -2237,6 +2253,10 @@ export function TripMasterApp() {
 
       {activeTab === 'record' ? (
         <section className="card">
+          <div className="section-heading">
+            <p className="section-kicker">🧳 Travel Record</p>
+            <h2>Save your media memories in shareable cards</h2>
+          </div>
           <form onSubmit={saveRecord}>
             <label>
               Title
@@ -2295,7 +2315,7 @@ export function TripMasterApp() {
       {activeTab === 'diary' ? (
         <section id="tab-diary-section" className="card diary-section">
           <div className="diary-intro">
-            <h2>Diary</h2>
+            <h2>📔 Travel Journal</h2>
             <p>Capture today with a cozy memory card, not a boring form.</p>
           </div>
           <form onSubmit={saveDiary} className="diary-form-card">
@@ -2487,7 +2507,7 @@ export function TripMasterApp() {
 
       {activeTab === 'tripstargram' ? (
         <section id="tab-tripstargram-section" className="card">
-          <h2>Tripstargram</h2>
+          <h2>📸 Tripstargram</h2>
           <p>Build your own Instagram-style travel feed. Auto-create from diary or post manually.</p>
           <form className="tripstargram-form" onSubmit={createTripstargramPost}>
             <div className="grid three">
@@ -2616,7 +2636,7 @@ export function TripMasterApp() {
 
       {activeTab === 'settings' ? (
         <section id="tab-settings-section" className="card">
-          <h2>Settings</h2>
+          <h2>⚙️ Settings</h2>
           <form onSubmit={submitSupport}>
             <div className="grid two">
               <label>
@@ -2653,7 +2673,7 @@ export function TripMasterApp() {
 
       {activeTab === 'restaurants' && informationSubTab === 'information' ? (
         <section className="card">
-          <h2>Information</h2>
+          <h2>🌍 Information</h2>
           <div className="grid three">
             <label>
               Country
@@ -2696,7 +2716,7 @@ export function TripMasterApp() {
 
       {activeTab === 'places' && planHelperSubTab === 'plan' ? (
         <section id="extra-plan-section" className="card">
-          <h2>Plan</h2>
+          <h2>🗺️ Smart Plan</h2>
           <article className="plan-prep-card">
             <div className="plan-prep-header">
               <strong>
@@ -2999,7 +3019,7 @@ export function TripMasterApp() {
 
       {activeTab === 'places' && planHelperSubTab === 'transportation' ? (
         <section className="card">
-          <h2>Transportation</h2>
+          <h2>🚄 Transportation</h2>
           <div className="result-list">
             {transportOptions.map((option) => (
               <article key={`${option.mode}-${option.bookingUrl}`} className="result-card">
@@ -3017,7 +3037,7 @@ export function TripMasterApp() {
 
       {activeTab === 'restaurants' && informationSubTab === 'tips' ? (
         <section className="card">
-          <h2>Tips</h2>
+          <h2>💬 Tips</h2>
           <p>Community + global travel tips in friendly iMessage-like bubbles.</p>
           <div className="tips-bubbles">
             {tips.map((tip) => (
@@ -3040,7 +3060,7 @@ export function TripMasterApp() {
 
       {activeExtraTab === 'entertainment' ? (
         <section className="card">
-          <h2>Entertainment</h2>
+          <h2>🎬 Entertainment</h2>
           <div className="grid two">
             <label>
               Mini title
@@ -3076,7 +3096,7 @@ export function TripMasterApp() {
 
       {activeTab === 'restaurants' && informationSubTab === 'event' ? (
         <section id="extra-event-section" className="card">
-          <h2>Event</h2>
+          <h2>🎫 Event</h2>
           <p>
             Latest planned exhibitions/performances for {placesCity} ({countryCode}) · source: {eventsSource}
           </p>
